@@ -1648,7 +1648,7 @@ static void draw_tape_page(void)
     int moving = (seq.loop_state == LOOP_PLAY || seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
     int rec = (seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
 
-    if (st.seq[0] != SEQ_STEP && sub == 2) {
+    if (st.seq[0] != SEQ_STEP && sub == 2) { // JSM view notes
         static const char *const NNAME[12] = {
             "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
         };
@@ -1696,9 +1696,9 @@ static void draw_tape_page(void)
                         g_box(16.0f, y - 3.0f, 208.0f, 26.0f, 1.2f, 0.85f);
                     }
                     g_color(sel ? GC_WHITE : GC_SLATE);
-                    g_text(26.0f, y + 4.0f, tbuf, 11.0f, 1.4f, sel ? 1.0f : 0.75f, 0);
+                    g_text(26.0f, y + 4.0f, tbuf, 16.0f, 2.4f, sel ? 1.0f : 0.75f, 0);
                     g_color(sel ? KCOL[notes_trk & 3] : GC_WHITE);
-                    g_text(150.0f, y + 4.0f, nbuf, 11.0f, 1.4f, sel ? 1.0f : 0.75f, 0);
+                    g_text(150.0f, y + 4.0f, nbuf, 16.0f, 2.4f, sel ? 1.0f : 0.75f, 0);
                 }
             }
         }
