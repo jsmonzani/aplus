@@ -76,6 +76,11 @@ static ParamDef dyn_p;
 static int page = PG_HOME;
 static int subpage[NPAGE];
 
+/* tape notes list subpage state */
+static uint8_t notes_trk;
+static uint8_t notes_sel;
+static uint8_t notes_del;
+
 int ui_page(void)    { return page; }
 
 /* SEQ / ARP: K1 is MODE in every mode. SHAKE's four settings take a second subpage: 1/2 MODE GRAV SPIN
@@ -92,7 +97,7 @@ static int page_nsub(int pg)
     case PG_MIX: return 4;   /* 0 VOL, 1 PAN, 2 FX SEND, 3 MASTER EQ/DRIVE */
     case PG_ENV: return 2;   /* 0 AMP ADSR, 1 MOD ENV */
     case PG_GLO: return 3;   /* 0 GLOBAL, 1 KEYS, 2 CHORD */
-    case PG_SEQ: return 2;   /* 0 TAPE DECK, 1 TAPE EDIT (or STEP) */
+    case PG_SEQ: return 3;   /* 0 TAPE DECK, 1 TAPE EDIT (or STEP), 2 TAPE NOTES */
     default:     return 1;
     }
 }
@@ -181,6 +186,27 @@ const ParamDef *page_param(int pg, int i)
             else { dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_PLINK; }
             return &dyn_p;
         }
+        if (sub == 2) {
+            int total = 0;
+            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+            if (total <= 0) {
+                notes_sel = 0;
+            } else if (notes_sel >= total) {
+                notes_sel = (uint8_t)(total - 1);
+            }
+            dyn_p.min = 0; dyn_p.show_off = 0; dyn_p.opts = 0;
+            if (i == 0) {
+                dyn_p.name = "TRACK"; dyn_p.kind = PK_ENUM; dyn_p.max = 3; dyn_p.opts = O_TRK;
+            } else if (i == 1) {
+                dyn_p.name = "TIME"; dyn_p.kind = PK_INT;
+                dyn_p.max = total > 0 ? (uint8_t)((total - 1) < 255 ? (total - 1) : 255) : 0;
+            } else if (i == 2) {
+                dyn_p.name = "NOTE"; dyn_p.kind = PK_INT; dyn_p.max = 0;
+            } else {
+                dyn_p.name = "DEL"; dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_ONOFF;
+            }
+            return &dyn_p;
+        }
     }
     return &pages[pg].p[i];
 }
@@ -222,6 +248,17 @@ uint8_t *page_value(int pg, int i)
             if (i == 1) return &st.tape[2];
             if (i == 2) return &st.seq[3];
             return &st.seq[7];
+        }
+        if (sub == 2) {
+            static uint8_t note_val;
+            uint8_t n = 0;
+            if (i == 0) return &notes_trk;
+            if (i == 1) return &notes_sel;
+            if (i == 2) {
+                note_val = eng_tape_note_info(notes_trk & 3, notes_sel, 0, &n, 0) ? n : 0;
+                return &note_val;
+            }
+            return &notes_del;
         }
         if (i == 0) return &st.track;
         if (i == 1) return &st.seq[1];
@@ -353,6 +390,44 @@ static APART void value_text(int pg, int i, char *out)
         put_s(out, "END");                       /* (OUT at or before IN, or past the tape, plays to the end) */
         return;
     }
+    if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 2) {
+        if (i == 1) {
+            uint16_t tk = 0;
+            int bt, meas, in_bar, beat, div;
+            char *d;
+            if (!eng_tape_note_info(notes_trk & 3, notes_sel, &tk, 0, 0)) {
+                put_s(out, "---");
+                return;
+            }
+            bt = seq_bar_ticks();
+            meas = (bt > 0 ? (int)tk / bt : 0) + 1;
+            in_bar = bt > 0 ? (int)tk % bt : (int)tk;
+            beat = in_bar / 96;
+            div = in_bar % 96;
+            d = put_i(out, meas);
+            *d++ = ':';
+            d = put_i(d, beat);
+            *d++ = ':';
+            put_i(d, div);
+            return;
+        }
+        if (i == 2) {
+            static const char *const NNAME[12] = {
+                "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+            };
+            uint8_t midi_n = 0;
+            int oct;
+            char *d;
+            if (!eng_tape_note_info(notes_trk & 3, notes_sel, 0, &midi_n, 0)) {
+                put_s(out, "---");
+                return;
+            }
+            oct = ((int)midi_n / 12) - 1;
+            d = put_s(out, NNAME[midi_n % 12]);
+            put_i(d, oct);
+            return;
+        }
+    }
     if (p->kind == PK_ENUM) {
         if (pg == PG_LFO && i == 3 && v >= 1 && v <= 4)
             put_s(out, insts[st.inst]->knob[v - 1]);
@@ -428,6 +503,11 @@ static APART void open_page(int pg)
         int ns = page_nsub(pg);
         if (ns > 1) {
             subpage[pg] = (subpage[pg] + 1) % ns;
+            if (pg == PG_SEQ && subpage[pg] == 2) {
+                notes_trk = st.track & 3;
+                notes_sel = 0;
+                notes_del = 0;
+            }
             page_t = 0.0f;
             sync_cols(pg);
             return;
@@ -954,6 +1034,32 @@ static APART void set_param(int i, int v)
         set_track(v);
         return;
     }
+    if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 2) {
+        if (i == 0) {
+            int total = 0;
+            notes_trk = (uint8_t)(v & 3);
+            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+            if (notes_sel >= total) notes_sel = (uint8_t)(total > 0 ? total - 1 : 0);
+            notes_del = 0;
+            sync_cols(PG_SEQ);
+            mark_dirty();
+            return;
+        }
+        if (i == 3 && v != 0) {
+            int total = 0;
+            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+            if (total > 0 && notes_sel < total) {
+                eng_post_del(notes_trk & 3, notes_sel);
+                if (notes_sel >= total - 1) {
+                    notes_sel = (uint8_t)(total > 1 ? total - 2 : 0);
+                }
+            }
+            notes_del = 0;
+            sync_cols(PG_SEQ);
+            mark_dirty();
+            return;
+        }
+    }
     if (page == PG_ARP && i == 0 && v == ARP_SHAKE) subpage[PG_ARP] = 0;   /* SHAKE opens on 1/2 */
     *q = (uint8_t)v;
     if (page == PG_GLO && subpage[PG_GLO] == 1 && i == 3 && !v) eng_post(EV_UNLATCH, 0);
@@ -1002,6 +1108,11 @@ SMALL void h1_encoder(int enc, int d)
             int ns = page_nsub(page);
             if (ns > 1) {
                 subpage[page] = (subpage[page] + (d > 0 ? 1 : -1) + ns) % ns;
+                if (page == PG_SEQ && subpage[page] == 2) {
+                    notes_trk = st.track & 3;
+                    notes_sel = 0;
+                    notes_del = 0;
+                }
                 page_t = 0.0f;
                 sync_cols(page);
             } else if (page == PG_FX) {
@@ -1091,7 +1202,15 @@ SMALL void h1_control_set(int enc, int v)
         break;
     case H1_ENC_SELECT:
         if (page == PG_HOME) set_tempo(iclamp(v, 40, 240));
-        else { subpage[page] = iclamp(v, 0, page_nsub(page) - 1); sync_cols(page); }
+        else {
+            subpage[page] = iclamp(v, 0, page_nsub(page) - 1);
+            if (page == PG_SEQ && subpage[page] == 2) {
+                notes_trk = st.track & 3;
+                notes_sel = 0;
+                notes_del = 0;
+            }
+            sync_cols(page);
+        }
         break;
     default:
         if (page == PG_HOME) set_knob(enc - H1_ENC_K1, v);
@@ -1529,6 +1648,65 @@ static void draw_tape_page(void)
     int moving = (seq.loop_state == LOOP_PLAY || seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
     int rec = (seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
 
+    if (st.seq[0] != SEQ_STEP && sub == 2) {
+        static const char *const NNAME[12] = {
+            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+        };
+        int total = 0, start = 0, row, bt = seq_bar_ticks();
+        draw_topbar(O_TRK[notes_trk & 3], "TAPE NOTES", "3/3");
+        eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+        if (total <= 0) {
+            notes_sel = 0;
+            g_color(GC_SLATE);
+            fit_text(120.0f, 96.0f, "NO NOTES", 11.0f, 180.0f, 0.8f);
+        } else {
+            if (notes_sel >= total) notes_sel = (uint8_t)(total - 1);
+            if (total > 4) {
+                start = (int)notes_sel - 1;
+                if (start < 0) start = 0;
+                if (start > total - 4) start = total - 4;
+            }
+            for (row = 0; row < 4; row++) {
+                int idx = start + row;
+                f32 y = 36.0f + (f32)row * 33.0f;
+                if (idx >= total) break;
+                {
+                    uint16_t tk = 0;
+                    uint8_t mn = 0;
+                    char tbuf[16], nbuf[8];
+                    int meas, in_bar, beat, div, oct, sel = (idx == (int)notes_sel);
+                    char *d;
+                    eng_tape_note_info(notes_trk & 3, idx, &tk, &mn, 0);
+                    meas = (bt > 0 ? (int)tk / bt : 0) + 1;
+                    in_bar = bt > 0 ? (int)tk % bt : (int)tk;
+                    beat = in_bar / 96;
+                    div = in_bar % 96;
+                    d = put_i(tbuf, meas);
+                    *d++ = ':';
+                    d = put_i(d, beat);
+                    *d++ = ':';
+                    put_i(d, div);
+
+                    oct = ((int)mn / 12) - 1;
+                    d = put_s(nbuf, NNAME[mn % 12]);
+                    put_i(d, oct);
+
+                    if (sel) {
+                        g_color(KCOL[notes_trk & 3]);
+                        g_box(16.0f, y - 3.0f, 208.0f, 26.0f, 1.2f, 0.85f);
+                    }
+                    g_color(sel ? GC_WHITE : GC_SLATE);
+                    g_text(26.0f, y + 4.0f, tbuf, 11.0f, 1.4f, sel ? 1.0f : 0.75f, 0);
+                    g_color(sel ? KCOL[notes_trk & 3] : GC_WHITE);
+                    g_text(150.0f, y + 4.0f, nbuf, 11.0f, 1.4f, sel ? 1.0f : 0.75f, 0);
+                }
+            }
+        }
+        draw_bottom_cols(PG_SEQ, 182.0f);
+        g_color(GC_WHITE);
+        return;
+    }
+
     if (moving) reel_ph = fractf(reel_ph + vis.dt * 0.42f * spd_mul + 2.0f);
 
     draw_topbar(O_TRK[st.track], st.seq[0] == SEQ_STEP ? "PATTERN" : (sub == 1 ? "TAPE EDIT" : "4-TRACK TAPE"),
@@ -1964,6 +2142,7 @@ SMALL void ui_init(void)
     glob_held = master_raw = -1;
     ring_t = 9.0f;
     dice_inst = -1;
+    notes_trk = notes_sel = notes_del = 0;
 }
 
 /* ---- dirty-tile presentation (60 MHz SPI DMA) ----------------------------------------- */

@@ -294,7 +294,8 @@ enum {
     EV_RIFF_REST,             /* add rest to riff sequence */
     EV_SNAP_SAVE,                /* save patch to snapshot 0..7 */
     EV_SNAP_LOAD,                /* load patch from snapshot 0..7 */
-    EV_MIDI_OFF                  /* MIDI's all notes off (CC 123): the notes MIDI plays end, the tape plays on */
+    EV_MIDI_OFF,                  /* MIDI's all notes off (CC 123): the notes MIDI plays end, the tape plays on */
+    EV_DEL_NOTE                     /* JSM delete note index (a) on track ((vel >> 1) & 3) */
 };
 enum { LOOP_EMPTY, LOOP_IDLE, LOOP_ARMED, LOOP_REC, LOOP_PLAY, LOOP_DUB };
 
@@ -320,6 +321,8 @@ void eng_init(uint32_t sample_rate);
 void eng_post(int type, int a);
 void eng_post_note(int on, int note, int vel, int from_midi);
 void eng_post_auto(int knob, int val);
+void eng_post_del(int trk, int idx); // JSM
+
 extern void (*eng_midi_fn)(uint8_t status, uint8_t d1, uint8_t d2);
 
 const uint8_t *eng_loop_blob(uint32_t *size);
@@ -346,7 +349,8 @@ int eng_quiet(void);
 uint32_t eng_events_dropped(void);
 void eng_two_cores(int (*run)(void (*fn)(uint32_t), uint32_t arg), int (*wait)(void));
 int eng_seq_has(int trk);
-
+int eng_seq_has(int trk); // JSM
+int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *total); // JSM
 extern Voice voices[NVOICE];
 extern uint32_t eng_rng;
 int scale_snap(int note);

@@ -102,6 +102,13 @@ static void post(uint32_t e)
     evq[w] = e;
     ev_w = nx;
 }
+//JSM
+
+
+void eng_post_del(int trk, int idx)
+{
+    post(((uint32_t)EV_DEL_NOTE << 8) | ((uint32_t)idx & 255u) | (((uint32_t)(trk & 3)) << 17));
+}
 void eng_post(int type, int a) { post(((uint32_t)type << 8) | ((uint32_t)a & 255u)); }
 void eng_post_note(int on, int note, int vel, int from_midi)
 {
@@ -1192,7 +1199,86 @@ static void tape_paste(void)
     if (loop_state == LOOP_EMPTY && nlev) loop_state = LOOP_IDLE;
     loop_gen++;
 }
+//JSM
+int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *total)
+{
+    int i, count = 0, found = 0;
+    trk &= 3;
+    for (i = 0; i < nlev; i++) {
+        if ((lev[i].trk & 3) == trk && (lev[i].flags & 7) == LEV_ON) {
+            if (count == idx) {
+                if (tick) *tick = lev[i].tick;
+                if (note) *note = (uint8_t)(lev[i].d1 & 127u);
+                found = 1;
+            }
+            count++;
+        }
+    }
+    if (total) *total = count;
+    return found;
+}
 
+static void tape_del_note(int trk, int note_idx)
+{
+    int i, count = 0, on_pos = -1, off_pos = -1;
+    uint16_t on_tick = 0;
+    uint8_t target_note = 0;
+    trk &= 3;
+    if (note_idx < 0) return;
+
+    for (i = 0; i < nlev; i++) {
+        if ((lev[i].trk & 3) == trk && (lev[i].flags & 7) == LEV_ON) {
+            if (count == note_idx) {
+                on_pos = i;
+                on_tick = lev[i].tick;
+                target_note = (uint8_t)(lev[i].d1 & 127u);
+                break;
+            }
+            count++;
+        }
+    }
+    if (on_pos < 0) return;
+
+    /* Find matching LEV_OFF on the same track and note at or after on_tick */
+    for (i = on_pos + 1; i < nlev; i++) {
+        if ((lev[i].trk & 3) == trk && (lev[i].d1 & 127u) == target_note &&
+            (lev[i].flags & 7) == LEV_OFF && lev[i].tick >= on_tick) {
+            off_pos = i;
+            break;
+        }
+    }
+    /* Fallback: if wrapped past loop end, look from start for earliest LEV_OFF */
+    if (off_pos < 0) {
+        for (i = 0; i < nlev; i++) {
+            if (i != on_pos && (lev[i].trk & 3) == trk &&
+                (lev[i].d1 & 127u) == target_note && (lev[i].flags & 7) == LEV_OFF) {
+                off_pos = i;
+                break;
+            }
+        }
+    }
+
+    voice_off_ex(target_note, trk, 1);
+    mout(0, target_note, 0);
+
+    for (i = 0; i < nlev; i++) {
+        if (i == on_pos || i == off_pos) continue;
+        if ((i > on_pos ? i - 1 : i) - (i > off_pos ? 1 : 0) < nlev) {
+            int dst = i;
+            if (on_pos >= 0 && i > on_pos) dst--;
+            if (off_pos >= 0 && i > off_pos) dst--;
+            lev[dst] = lev[i];
+        }
+    }
+    if (on_pos >= 0) nlev--;
+    if (off_pos >= 0) nlev--;
+    if (!nlev) {
+        loop_state = LOOP_EMPTY;
+        loop_pos = 0.0f;
+    }
+    saved_n++;
+    loop_gen++;
+}
 /* ---- 64-Step Pattern Sequencer -------------------------------------------------------- */
 static volatile int step_playing, step_write, step_cursor, step_at;
 static f32 step_acc, step_off;
@@ -1624,6 +1710,9 @@ static void handle(uint32_t e)
     case EV_PASTE:
         tape_paste();
         break;
+    case EV_DEL_NOTE: // JSM
+        tape_del_note((int)((e >> 17) & 3u), a);
+        break;        
     case EV_RIFF_REC:
         riff_rec = !riff_rec;
         if (riff_rec) { st.riff_len = 0; riff_at = 0; saved_n++; }
