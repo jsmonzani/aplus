@@ -11,12 +11,12 @@
 enum { G_MAX, G_ADD, G_PAINT };
 
 /* color-coded palette banks (3 bits per pixel, 32 anti-aliased shades each) */
-enum {
+enum { // JSM
     GC_WHITE  = 0,  /* K3: crisp white/cool gray, primary outlines */
-    GC_BLUE   = 1,  /* K1: TE Blue (#3B9EFF) */
-    GC_GREEN  = 2,  /* K2: TE Green (#44E37E) */
-    GC_ORANGE = 3,  /* K4: TE Orange (#FF6B1A) */
-    GC_RED    = 4,  /* REC / arm / clip alert (#FF2A4B) */
+    GC_BLUE   = 0,  /* K1: TE Blue (#3B9EFF) */
+    GC_GREEN  = 0,  /* K2: TE Green (#44E37E) */
+    GC_ORANGE = 0,  /* K4: TE Orange (#FF6B1A) */
+    GC_RED    = 0,  /* REC / arm / clip alert (#FF2A4B) */
     GC_GOLD   = 5,  /* playhead / active step / highlight (#FFD24A) */
     GC_CYAN   = 6,  /* LFO / FX / modulation (#2AE6E0) */
     GC_SLATE  = 7   /* subtle grids / labels / UI chrome (#6E788A) */
