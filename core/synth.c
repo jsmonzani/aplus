@@ -1187,6 +1187,7 @@ static void tape_paste(void)
     }
     tape_bounds(&in_t, &out_t);
     track_snap_live(cur_trk);
+    base_tick = in_t;// JSM paste at in_t instead of loop_pos
     for (i = 0; i < nclip && nlev < NLEV; i++) {
         uint32_t tk = (base_tick + clip_ev[i].tick) % (uint32_t)loop_len;
         LEv *e = lev_insert((uint16_t)tk);
