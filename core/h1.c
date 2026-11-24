@@ -60,6 +60,10 @@ static const uint8_t ALGO_K0[][NALGO][4] = {
      *   STUDIO, LIVE, TIGHT, VINTAGE, ORCH, HALL, MARCH, SHELLAC (ROOM 0: the reflections off) */
     {{50, 50, 60, 0}, {50, 60, 56, 58}, {52, 34, 66, 0}, {46, 50, 42, 14},
      {50, 54, 56, 0}, {48, 66, 50, 66}, {54, 36, 64, 0}, {46, 52, 36, 22}},
+    /* 14 COZY JSM   (K1 TUNE, K2 DECAY, K3 TONE, K4 ROOM):
+     *   STUDIO, LIVE, TIGHT, VINTAGE, ORCH, HALL, MARCH, SHELLAC (ROOM 0: the reflections off) */
+    {{50, 50, 60, 0}, {50, 60, 56, 58}, {52, 34, 66, 0}, {46, 50, 42, 14},
+     {50, 54, 56, 0}, {48, 66, 50, 66}, {54, 36, 64, 0}, {46, 52, 36, 22}},     
 };
 typedef char a22_k0_rows[sizeof ALGO_K0 / sizeof ALGO_K0[0] == NINST ? 1 : -1];
 
