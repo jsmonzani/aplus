@@ -1,5 +1,9 @@
-# A22
+# Aplus, a fork of A22
+- Third page on th SEQ pannel, lists the notes on the track and you can delete them one by one to fix mistakes
+- Proof of concept: adding the COZY instrument
+- One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier.
 
+## Original doc from now on
 Custom firmware for the M-VAVE FM-1: an FM workstation. Fourteen synth and drum engines, each with eight
 algorithms and four live knobs, drawn in colour vector graphics. Eight selectable effects, a
 four-track tape with knob automation, a mixer, Riff and Shake sequencers, an arpeggiator, a step

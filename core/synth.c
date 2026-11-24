@@ -922,7 +922,8 @@ static void tape_fire_ev(const LEv *e, int reverse)
     }
     {
         int on = (kind == LEV_ON);
-        int part = part_ok(e->part) ? e->part : PART(st.trk[trk].inst, st.trk[trk].algo);
+        //int part = part_ok(e->part) ? e->part : PART(st.trk[trk].inst, st.trk[trk].algo);
+        int part = PART(st.trk[trk].inst, st.trk[trk].algo); // JSM Always ignore instrument changes, take the track instrument everytime
         int vel = e->d2 ? e->d2 : 110;
         if (reverse) on = !on;
         if (on && track_muted(trk))              /* (muted: no new notes, but offs still end what sounds) */
