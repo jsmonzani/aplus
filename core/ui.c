@@ -1220,12 +1220,12 @@ SMALL void h1_control_set(int enc, int v)
 }
 
 /* ---- 8-Color x 32-Shade RGB565 Palette ------------------------------------------- */
-static const uint8_t OP1_RGB[8][3] = {
+static const uint8_t OP1_RGB[8][3] = { // JSM
     {240, 243, 248},   /* 0 GC_WHITE  (K3) */
-    { 59, 158, 255},   /* 1 GC_BLUE   (K1 - TE Blue) */
-    { 68, 227, 126},   /* 2 GC_GREEN  (K2 - TE Green) */
-    {255, 107,  26},   /* 3 GC_ORANGE (K4 - TE Orange) */
-    {255,  42,  75},   /* 4 GC_RED    (REC / Alert) */
+    {205, 180, 219},//{ 59, 158, 255},   /* 1 GC_BLUE   (K1 - TE Blue) */
+    {255, 200, 221},//{ 68, 227, 126},   /* 2 GC_GREEN  (K2 - TE Green) */
+    {255, 175, 204},//{255, 107,  26},   /* 3 GC_ORANGE (K4 - TE Orange) */
+    {189, 224, 254},//{255,  42,  75},   /* 4 GC_RED    (REC / Alert) */
     {255, 210,  74},   /* 5 GC_GOLD   (Playhead / Active) */
     { 42, 230, 224},   /* 6 GC_CYAN   (LFO / FX) */
     {115, 128, 148},   /* 7 GC_SLATE  (Grids / Chrome) */
@@ -1348,9 +1348,9 @@ static void draw_bottom_cols(int pg, f32 top_y)
             g_disc(px, top_y, 3.0f, 1.0f);
         }
         value_text(pg, i, buf);
-        fit_text(cx, top_y + 9.0f, buf, 13.0f, 52.0f, i == active_col ? 1.0f : 0.82f);
+        fit_text(cx, top_y + 7.0f, buf, 15.0f, 52.0f, i == active_col ? 1.0f : 1.2f); // JSM
         g_color(i == active_col ? KCOL[i] : GC_SLATE);
-        fit_text(cx, top_y + 27.0f, p->name, 8.5f, 52.0f, i == active_col ? 1.0f : 0.82f);
+        fit_text(cx, top_y + 27.0f, p->name, 12.5f, 52.0f, i == active_col ? 1.0f : 1.2f); //JSM
     }
     g_color(GC_WHITE);
 }
@@ -1693,7 +1693,7 @@ static void draw_tape_page(void)
 
                     if (sel) {
                         g_color(KCOL[notes_trk & 3]);
-                        g_box(16.0f, y - 3.0f, 208.0f, 26.0f, 1.2f, 0.85f);
+                        g_box(16.0f, y - 3.0f, 208.0f, 30.0f, 1.2f, 0.85f);
                     }
                     g_color(sel ? GC_WHITE : GC_SLATE);
                     g_text(26.0f, y + 4.0f, tbuf, 16.0f, 2.4f, sel ? 1.0f : 0.75f, 0);
