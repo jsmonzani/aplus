@@ -3,6 +3,10 @@
 - Proof of concept: adding the COZY instrument
 - One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier.
 - MIDI OUT: each track sends midi out on its channel
+- Knobs are more aligned with Feluca based firmware:
+- PRESETS     Preset/Algo (1..8) or FX Type on FX page  
+- ALGORITHM   Switch Track T1..T4
+- SELECT      Instrument (Home)
 
 ## Original doc from now on
 Custom firmware for the M-VAVE FM-1: an FM workstation. Fourteen synth and drum engines, each with eight

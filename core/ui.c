@@ -3,11 +3,11 @@
  * 8-Color x 32-Shade indexed palette (zero extra RAM/SPI overhead):
  *   K1 = TE Blue   K2 = TE Green   K3 = TE White   K4 = TE Orange
  *
- * Panel Map:
- *   PRESETS     Instrument (10 engines)                   | EDIT+PRESETS: Switch Track T1..T4
- *   ALGORITHM   Preset/Algo (1..8) or FX Type on FX page  | EDIT+ALGO:    Switch Arp/Seq Mode
+ * Panel Map: JSM version
+ *   PRESETS     Preset/Algo (1..8) or FX Type on FX page  | EDIT+PRESETS: Switch Track T1..T4
+ *   ALGORITHM   Switch Track T1..T4                       | EDIT+ALGO:    Switch Arp/Seq Mode
  *   K1..K4      Blue / Green / White / Orange parameters  | EDIT+K1..K4:  Mute T1..T4 on Mixer
- *   SELECT      Tempo (Home), Subpage flip (Pages), Step cursor | EDIT+SELECT: Track Volume
+ *   SELECT      Instrument (Home), Subpage flip (Pages), Step cursor | EDIT+SELECT: Track Volume
  *   MASTER      Global Volume                             | EDIT+MASTER:  Track Volume
  *   HOME        Synth/Drum Engine View                    | Hold: Panic / Hush
  *   ENV         Amp ADSR <-> Mod/Filter Env (tap cycles)
@@ -1080,12 +1080,13 @@ SMALL void h1_encoder(int enc, int d)
     clear_all_keep();
     switch (enc) {
     case H1_ENC_PRESET:
-        if (btn_held & (1u << H1_BTN_EDIT)) {
+        /*if (btn_held & (1u << H1_BTN_EDIT)) {
             btn_fired[H1_BTN_EDIT] = 1;
             set_track(st.track + d);
         } else {
             set_instrument(st.inst + d);
-        }
+        }*/
+        set_algo(st.ip[st.inst].algo + d); // JSM
         break;
     case H1_ENC_ALGO:
         if (page == PG_FX) set_fx_type(st.fx_type + d);
@@ -1093,7 +1094,8 @@ SMALL void h1_encoder(int enc, int d)
             if (btn_held & (1u << H1_BTN_EDIT)) btn_fired[H1_BTN_EDIT] = 1;
             set_arp_mode(((st.ip[st.inst].arp[0] + d) % NARPMODE + NARPMODE) % NARPMODE);
         } else {
-            set_algo(st.ip[st.inst].algo + d);
+            // set_algo(st.ip[st.inst].algo + d);
+            set_track(st.track + d); // JSM
         }
         break;
     case H1_ENC_SELECT:
@@ -1103,7 +1105,8 @@ SMALL void h1_encoder(int enc, int d)
         } else if (step_cursor_live()) {
             eng_post(EV_STEP_MOVE, iclamp(d, -100, 100) + 128);
         } else if (page == PG_HOME) {
-            set_tempo(st.glo[0] + accel(enc, d));
+            // set_tempo(st.glo[0] + accel(enc, d));
+            set_instrument(st.inst + d); // JSM
         } else {
             int ns = page_nsub(page);
             if (ns > 1) {
