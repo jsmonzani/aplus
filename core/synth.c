@@ -129,6 +129,16 @@ static void mout(int on, int note, int vel)
         fn(on ? 0x90u : 0x80u, (uint8_t)note, (uint8_t)(on ? iclamp(vel, 1, 127) : 0));
 }
 
+void mout_channel(int on, int note, int vel, int c) // JSM midi out on a channel (1..16)
+{
+    void (*fn)(uint8_t, uint8_t, uint8_t) = eng_midi_fn;
+    if (fn && note >= 0 && note < 128 && c >= 1 && c <= 16) {
+            uint8_t ch = (uint8_t)((c - 1) & 0x0F);
+            uint8_t status = (uint8_t)((on ? 0x90u : 0x80u) | ch);
+            uint8_t velocity = (uint8_t)(on ? iclamp(vel, 1, 127) : 0);
+            fn(status, (uint8_t)note, velocity);
+        }
+}
 void dsp_init(void)
 {
     int i;
@@ -930,10 +940,10 @@ static void tape_fire_ev(const LEv *e, int reverse)
             return;
         if (on) {
             voice_on_ex(e->d1 & 127, part, trk, 1, vel);
-            mout(1, e->d1 & 127, vel);
+            mout_channel(1, e->d1 & 127, vel, 1 + trk); // JSM
         } else {
             voice_off_ex(e->d1 & 127, trk, 1);
-            mout(0, e->d1 & 127, 0);
+            mout_channel(0, e->d1 & 127, 0, 1 + trk); // JSM
         }
     }
 }
