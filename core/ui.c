@@ -80,6 +80,7 @@ static int subpage[NPAGE];
 static uint8_t notes_trk;
 static uint8_t notes_sel;
 static uint8_t notes_del;
+static uint8_t tape_len;
 
 int ui_page(void)    { return page; }
 
@@ -108,7 +109,7 @@ const ParamDef *page_param(int pg, int i)
     static const char *const MAST_N[4] = {"LOW", "MID", "HIGH", "DRIVE"};
     static const char *const SHAKE_N[2][4] = {{"MODE", "GRAV", "SPIN", "BOUNCE"}, {"MODE", "CAGE", "", ""}};
     static const char *const KEYS_N[4] = {"ROOT", "SCALE", "GLIDE", "HOLD"};
-    static const char *const TEDIT_N[4]= {"IN BAR", "OUT BAR", "SNAP", "PITCH"};
+    static const char *const TEDIT_N[4]= {"IN BAR", "LENGTH", "SNAP", "PITCH"}; // JSM
     int sub = subpage[pg];
 
     if (pg == PG_FX) {
@@ -245,7 +246,7 @@ uint8_t *page_value(int pg, int i)
         }
         if (sub == 1) {
             if (i == 0) return &st.tape[1];
-            if (i == 1) return &st.tape[2];
+            if (i == 1) return &tape_len; // JSM
             if (i == 2) return &st.seq[3];
             return &st.seq[7];
         }
@@ -385,9 +386,13 @@ static APART void value_text(int pg, int i, char *out)
         put_i(out, v + 1);                       /* IN BAR: bars counted from 1, as its toast and the tape's */
         return;
     }
-    if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 1 && i == 1 &&
-        (v == 0 || v <= st.tape[1] || v > (1 << (st.seq[1] < 6 ? st.seq[1] : 2)))) {
-        put_s(out, "END");                       /* (OUT at or before IN, or past the tape, plays to the end) */
+    if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 1 && i == 1) { // JSM
+        int bars = 1 << (st.seq[1] < 6 ? st.seq[1] : 2);
+        if (v == 0 || v > bars) {
+            put_s(out, "END");
+        } else {
+            put_s(put_i(out, v), "");
+        }
         return;
     }
     if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 2) {
@@ -829,8 +834,9 @@ SMALL void h1_button(int btn, int down)
         }
         if (btn == H1_BTN_OCTUP) {
             int bars = 1 << (st.seq[1] < 6 ? st.seq[1] : 2);
-            st.tape[2] = (uint8_t)((st.tape[2] + 1) % (bars + 1));
-            toast(st.tape[2] ? "OUT BAR " : "OUT FULL", st.tape[2], st.tape[2] != 0, 0, -1);
+            tape_len = (uint8_t)(((int)tape_len + 1) % (bars + 1)); //JSM
+            st.tape[2] = tape_len ? (uint8_t)iclamp((int)st.tape[1] + (int)tape_len, 1, 32) : 0;
+            toast(tape_len ? "LEN " : "OUT FULL", tape_len, tape_len != 0, 0, -1);
             mark_dirty();
             return;
         }
@@ -1028,10 +1034,18 @@ static APART void set_param(int i, int v)
     v = iclamp(v, p->min, p->max);
     if (p->name[0]) active_col = i;              /* (an empty column is never the one in hand) */
     if (v == *q) return;
-    if (page == PG_SEQ && st.seq[0] == SEQ_STEP && i == 0) { set_seq_mode(v); return; }
-    if (page == PG_SEQ && ((st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 0 && i == 0) ||
-                           (st.seq[0] == SEQ_STEP && i == 2))) {
-        set_track(v);
+    if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 1 && i == 0) { //JSM
+        st.tape[1] = (uint8_t)v;
+        if (tape_len > 0) {
+            st.tape[2] = (uint8_t)iclamp((int)st.tape[1] + (int)tape_len, 1, 32);
+        }
+        mark_dirty();
+        return;
+    }
+    if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 1 && i == 1) { //JSM
+        tape_len = (uint8_t)v;
+        st.tape[2] = v == 0 ? 0 : (uint8_t)iclamp((int)st.tape[1] + v, 1, 32);
+        mark_dirty();
         return;
     }
     if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 2) {
@@ -1135,7 +1149,15 @@ SMALL void h1_encoder(int enc, int d)
             mark_dirty();
             return;
         }
-        if (page == PG_HOME) set_knob(i, KNOBS_NOW(st.inst)[i] + accel(enc, d));
+        if (page == PG_HOME) { // JSM, show the synth parameter in big
+            uint8_t val;
+            int pip;
+            set_knob(i, KNOBS_NOW(st.inst)[i] + accel(enc, d));
+            val = KNOBS_NOW(st.inst)[i];
+            pip = ((int)val * 7 + 50) / 100;
+            toast(insts[st.inst]->knob[i], 0, 0, 0, pip);
+            mark_dirty();
+        }
         else {
             const ParamDef *p = page_param(page, i);
             int step = p->kind == PK_ENUM || (p->kind == PK_INT && p->max - p->min < 16) ? d : accel(enc, d);
@@ -1740,6 +1762,19 @@ static void draw_tape_page(void)
         put_s(put_i(b, seq.bars), " BAR");
         fit_text(120.0f, 52.0f, b, 10.0f, 58.0f, 0.9f);
     }
+    /* JSM background color In/Out box  */
+    {
+        f32 xi = 28.0f + seq.loop_in * 200.0f;
+        f32 xo = 28.0f + seq.loop_out * 200.0f;
+        f32 w = xo - xi;
+        if (w > 0.5f) {
+            g_color(GC_SLATE);
+            g_rect(xi, 88.0f, w, 76.0f, 0.18f);
+        }
+        g_color(GC_CYAN);
+        g_line(xi, 88.0f, xi, 164.0f, 1.4f, 0.7f);
+        g_line(xo, 88.0f, xo, 164.0f, 1.4f, 0.7f);
+    }
 
     /* 4 Horizontal Color-Coded Tape Track Lanes (T1 Blue, T2 Green, T3 White, T4 Orange) */
     for (t = 0; t < NTRACK; t++) {
@@ -1885,25 +1920,26 @@ static void draw_glo_page(void)
 }
 
 /* ---- overlays: toast, name flash, volume ring, bottom sequencer bar ------------------- */
-static void draw_toast(void)
+static void draw_toast(void) // JSM larger box
 {
-    f32 a = 1.0f - smooth01((toast_t - 0.95f) / 0.35f), y = 114.0f, w;
+    f32 a = 1.0f - smooth01((toast_t - 0.95f) / 0.35f), y = 108.0f, w;
+    f32 box_h = toast_pips >= 0 ? 50.0f : 34.0f;
     int i;
     if (a <= 0.01f || !toast_s[0]) return;
-    w = g_text_w(toast_s, 13.0f);
+    w = g_text_w(toast_s, 20.0f);
     g_mode(G_PAINT);
-    g_rect(120.0f - w * 0.5f - 10.0f, y - 7.0f, w + 20.0f, toast_pips >= 0 ? 36.0f : 26.0f, 0.0f);
+    g_rect(120.0f - w * 0.5f - 14.0f, y - 8.0f, w + 28.0f, box_h + 2.0f, 0.0f);
     g_mode(G_MAX);
     g_dim(a);
     g_color(GC_GOLD);
-    g_box(120.0f - w * 0.5f - 9.0f, y - 6.0f, w + 18.0f, toast_pips >= 0 ? 34.0f : 24.0f, 1.2f, 0.55f);
+    g_box(120.0f - w * 0.5f - 13.0f, y - 7.0f, w + 26.0f, box_h, 1.4f, 0.55f);
     g_color(GC_WHITE);
-    g_text(120.0f, y, toast_s, 13.0f, 1.8f, 1.0f, 1);
+    g_text(120.0f, y, toast_s, 20.0f, 2.5f, 1.0f, 1);
     if (toast_pips >= 0) {
         for (i = 0; i < NALGO; i++) {
-            f32 x = 120.0f + ((f32)i - 3.5f) * 11.0f;
+            f32 x = 120.0f + ((f32)i - 3.5f) * 14.0f;
             g_color(i == toast_pips ? GC_ORANGE : GC_SLATE);
-            g_disc(x, y + 21.0f, i == toast_pips ? 3.0f : 1.4f, i == toast_pips ? 1.0f : 0.5f);
+            g_disc(x, y + 31.0f, i == toast_pips ? 4.5f : 2.2f, i == toast_pips ? 1.0f : 0.5f);
         }
     }
     g_dim(1.0f);
