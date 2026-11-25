@@ -28,8 +28,8 @@ static const DiceKnob DICE[][4] = {
     {{14, 40, 100}, {18, 0, 100}, {18, 0, 100}, {16, 0, 100}},
     /* HAZE      MORPH, FORMANT, DRIFT, SHIMMER */
     {{22, 0, 100}, {22, 0, 100}, {22, 0, 100}, {22, 0, 100}},
-    /* MONO      FM-BITE, CUTOFF, GLIDE, SUB-DRV */
-    {{18, 0, 100}, {16, 30, 100}, {10, 0, 40}, {16, 0, 100}},
+    /* MONO      FM-BITE, CUTOFF, GLIDE, SUB-DRV 
+    {{18, 0, 100}, {16, 30, 100}, {10, 0, 40}, {16, 0, 100}}, JSM */
     /* KIT       TUNE, DECAY, PUNCH, FM-GRIT */
     {{6, 0, 100}, {16, 0, 100}, {16, 0, 100}, {14, 0, 70}},
     /* PERC      PITCH, MALLET, RING, SPACE */
@@ -42,8 +42,10 @@ static const DiceKnob DICE[][4] = {
     {{30, 0, 100}, {20, 0, 100}, {16, 0, 100}, {14, 40, 100}},
     /* SKINS     TUNE, DECAY, TONE, ROOM (TUNE as KIT's; ROOM at 0 stays off) */
     {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},
-    /* COZY JSM
-    {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},*/
+    /* KOI JSM */ 
+    {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},
+    /* KNOT JSM */ 
+    {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},    
 };
 typedef char dice_rows[sizeof DICE / sizeof DICE[0] == NINST ? 1 : -1];
 

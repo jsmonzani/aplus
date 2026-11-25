@@ -11,9 +11,9 @@ uint32_t eng_rng = 0x2F6E2B1u;
 
 const InstDef *const insts[] = {
     &inst_fm4, &inst_electric, &inst_stack, &inst_analog, &inst_shaper,
-    &inst_wire, &inst_haze, &inst_mono, &inst_kit, &inst_perc, &inst_wave, &inst_chip,
+    &inst_wire, &inst_haze, /* &inst_mono,*/ &inst_kit, &inst_perc, &inst_wave, &inst_chip,
     &inst_cycle, &inst_skins
-    //, &inst_cozy // JSM
+    , &inst_koi, &inst_knot // JSM
 };
 typedef char a22_insts_all[sizeof insts / sizeof insts[0] == NINST ? 1 : -1];
 
@@ -26,15 +26,15 @@ static const f32 algo_gain[][NALGO] = {
     /* 4 SHAPER   */ {1.05f, 1.22f, 1.12f, 1.28f, 1.06f, 1.30f, 1.08f, 1.05f},
     /* 5 WIRE    */ {1.50f, 1.48f, 1.46f, 1.38f, 1.20f, 1.38f, 0.72f, 0.76f},
     /* 6 HAZE */ {1.22f, 0.92f, 1.20f, 1.08f, 1.26f, 1.32f, 1.20f, 1.12f},
-    /* 7 MONO   */ {1.92f, 1.58f, 1.38f, 1.24f, 1.24f, 1.20f, 1.44f, 1.28f},
+    /* 7 MONO JSM   {1.92f, 1.58f, 1.38f, 1.24f, 1.24f, 1.20f, 1.44f, 1.28f},*/
     /* 8 KIT      */ {1.25f, 1.42f, 1.45f, 1.42f, 1.40f, 1.45f, 1.45f, 1.75f},
     /* 9 PERC      */ {1.12f, 1.32f, 1.14f, 1.38f, 2.10f, 1.10f, 1.14f, 1.92f},
     /* 10 WAVE     */ {0.47f, 0.50f, 0.52f, 1.08f, 0.49f, 0.54f, 0.52f, 0.48f},
     /* 11 CHIP     */ {0.50f, 0.53f, 0.39f, 0.55f, 0.50f, 0.52f, 1.10f, 0.58f},
     /* 12 CYCLE    */ {0.484f, 0.467f, 0.465f, 0.480f, 0.477f, 0.461f, 0.460f, 0.473f},
     /* 13 SKINS    */ {1.040f, 0.875f, 1.308f, 0.854f, 0.927f, 0.788f, 1.166f, 0.797f},
-    //    /* COZY   */ {1.334f, 1.413f, 1.000f, 0.794f, 1.334f, 1.189f, 1.334f, 1.334f}, // JSM
-
+    /* 14 KOI    */ {1.000f, 1.000f, 1.189f, 1.189f, 1.122f, 1.000f, 0.750f, 1.259f},
+    /* 15 KNOT   */ {1.000f, 0.891f, 1.000f, 0.668f, 0.841f, 1.259f, 0.841f, 0.841f},
 };
 typedef char a22_gain_rows[sizeof algo_gain / sizeof algo_gain[0] == NINST ? 1 : -1];
 

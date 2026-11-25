@@ -2287,9 +2287,11 @@ const uint16_t *h1_palette(void)    { return pal; }
 /* ---- LEDs & state dirty --------------------------------------------------------------- */
 uint32_t h1_key_leds(void)
 {
+    /* JSM not distracting leds when playing
     uint32_t m;
-    if (eng_seq_leds(&m, page == PG_SEQ, fractf(tsec * 2.2f) < 0.6f)) return m;
-    return eng_sounding_lo();
+    if (eng_seq_leds(&m, page == PG_SEQ, fractf(tsec * 2.2f) < 0.6f)) return m; 
+    return eng_sounding_lo();*/
+    return 0;
 }
 
 uint32_t h1_button_leds(void)
