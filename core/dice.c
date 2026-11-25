@@ -42,8 +42,8 @@ static const DiceKnob DICE[][4] = {
     {{30, 0, 100}, {20, 0, 100}, {16, 0, 100}, {14, 40, 100}},
     /* SKINS     TUNE, DECAY, TONE, ROOM (TUNE as KIT's; ROOM at 0 stays off) */
     {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},
-    /* COZY JSM     TUNE, DECAY, TONE, ROOM (TUNE as KIT's; ROOM at 0 stays off) */
-    {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},
+    /* COZY JSM
+    {{6, 0, 100}, {16, 10, 100}, {14, 20, 100}, {16, 0, 90}},*/
 };
 typedef char dice_rows[sizeof DICE / sizeof DICE[0] == NINST ? 1 : -1];
 
