@@ -75,8 +75,9 @@ static void elec_note(Voice *v, const Blk *b)
     v->s[2] = 0.0f;   /* feedback reed */
 }
 
-static inline __attribute__((always_inline)) void elec_render_a(Voice *v, const Blk *b, f32 *out_l, f32 *out_r,
-                                                                int n, const int algo)
+/* one render for every algorithm (eight always_inline copies cost about 25 KB of flash) */
+static void elec_render_a(Voice *v, const Blk *b, f32 *out_l, f32 *out_r,
+                          int n, int algo)
 {
     const EAlgo *a = &EA[E.algo];
     f32 pitch = v->pitch + b->bend + E.wow;
@@ -224,20 +225,9 @@ static inline __attribute__((always_inline)) void elec_render_a(Voice *v, const 
     v->s[4] = lpl; v->s[5] = lpr;
 }
 
-/* one copy of the render per algorithm (algo a constant in each: the branches on it inside the sample loop
- * fold away); the same code, bit-exact */
 static void elec_render(Voice *v, const Blk *b, f32 *out_l, f32 *out_r, int n)
 {
-    switch (E.algo & 7) {
-    case 0: elec_render_a(v, b, out_l, out_r, n, 0); break;
-    case 1: elec_render_a(v, b, out_l, out_r, n, 1); break;
-    case 2: elec_render_a(v, b, out_l, out_r, n, 2); break;
-    case 3: elec_render_a(v, b, out_l, out_r, n, 3); break;
-    case 4: elec_render_a(v, b, out_l, out_r, n, 4); break;
-    case 5: elec_render_a(v, b, out_l, out_r, n, 5); break;
-    case 6: elec_render_a(v, b, out_l, out_r, n, 6); break;
-    default: elec_render_a(v, b, out_l, out_r, n, 7); break;
-    }
+    elec_render_a(v, b, out_l, out_r, n, E.algo & 7);
 }
 
 /* ---- 4-Color Graphic: Mechanical Tines, B3 Drawbars, Vibes Fans & Stereo Tremolo -- */

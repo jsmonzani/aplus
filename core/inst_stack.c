@@ -65,8 +65,9 @@ static void cluster_note(Voice *v, const Blk *b)
     v->s[13] = 1.0f;   /* initial bloom / punch */
 }
 
-static inline __attribute__((always_inline)) void cluster_render_a(Voice *v, const Blk *b, f32 *out_l, f32 *out_r,
-                                                                   int n, const int algo)
+/* one render for every algorithm (eight always_inline copies cost about 25 KB of flash) */
+static void cluster_render_a(Voice *v, const Blk *b, f32 *out_l, f32 *out_r,
+                             int n, int algo)
 {
     int i;
     f32 pitch = v->pitch + b->bend;
@@ -251,20 +252,9 @@ static inline __attribute__((always_inline)) void cluster_render_a(Voice *v, con
     v->ph[0] = p0; v->ph[1] = p1; v->ph[2] = p2; v->ph[3] = p3; v->ph[4] = pm; v->ph[5] = pd;
 }
 
-/* one copy of the render per algorithm (algo a constant in each: the branches on it inside the sample loop
- * fold away); the same code, bit-exact */
 static void cluster_render(Voice *v, const Blk *b, f32 *out_l, f32 *out_r, int n)
 {
-    switch (C.algo & 7) {
-    case 0: cluster_render_a(v, b, out_l, out_r, n, 0); break;
-    case 1: cluster_render_a(v, b, out_l, out_r, n, 1); break;
-    case 2: cluster_render_a(v, b, out_l, out_r, n, 2); break;
-    case 3: cluster_render_a(v, b, out_l, out_r, n, 3); break;
-    case 4: cluster_render_a(v, b, out_l, out_r, n, 4); break;
-    case 5: cluster_render_a(v, b, out_l, out_r, n, 5); break;
-    case 6: cluster_render_a(v, b, out_l, out_r, n, 6); break;
-    default: cluster_render_a(v, b, out_l, out_r, n, 7); break;
-    }
+    cluster_render_a(v, b, out_l, out_r, n, C.algo & 7);
 }
 
 /* ---- 4-Color Vector Picture: Orbiting 4-Voice Harmonic Constellation ------------- */
