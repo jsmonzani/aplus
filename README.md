@@ -1,7 +1,7 @@
 # Aplus, a fork of A22
 - Third page on the SEQ pannel, lists the notes on the track and you can delete them one by one to fix mistakes
 - Added KNOT and KOI instruments, removed MONO.
-- One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier.
+- One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier and gives more available events by saving 1 byte.
 - MIDI OUT: each track sends midi out on its channel
 
 Knobs are more aligned with Feluca-based firmwares, i.e.:
