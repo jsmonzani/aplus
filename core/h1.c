@@ -33,9 +33,9 @@ static const uint8_t ALGO_K0[][NALGO][4] = {
     {{46, 48, 38, 56}, {54, 52, 34, 46}, {62, 42, 44, 68}, {58, 66, 32, 78},
      {34, 38, 56, 44}, {64, 30, 48, 38}, {56, 60, 42, 74}, {48, 58, 68, 52}},
     /* 7 MONO      (K1 FM-BITE, K2 CUTOFF, K3 GLIDE, K4 SUB-DRV):
-     *   ACID, REESE, SH-LEAD, ZAP-BASS, GROWL, SUB-808, LASER, HOOVER 
+     *   ACID, REESE, SH-LEAD, ZAP-BASS, GROWL, SUB-808, LASER, HOOVER */
     {{42, 46, 18, 52}, {54, 44, 28, 64}, {38, 64, 22, 46}, {58, 54, 10, 58},
-     {66, 52, 20, 62}, {28, 36, 24, 74}, {62, 68, 16, 44}, {56, 62, 34, 58}}, JSM*/
+     {66, 52, 20, 62}, {28, 36, 24, 74}, {62, 68, 16, 44}, {56, 62, 34, 58}},
     /* 8 KIT       (K1 TUNE, K2 DECAY, K3 PUNCH, K4 FM-GRIT):
      *   808, 909, CYCLES, CRISP, LOFI, MODULAR, METAL, WORLD */
     {{50, 52, 48, 18}, {52, 48, 64, 24}, {50, 46, 56, 46}, {50, 50, 54, 16},

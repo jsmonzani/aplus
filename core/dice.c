@@ -28,8 +28,8 @@ static const DiceKnob DICE[][4] = {
     {{14, 40, 100}, {18, 0, 100}, {18, 0, 100}, {16, 0, 100}},
     /* HAZE      MORPH, FORMANT, DRIFT, SHIMMER */
     {{22, 0, 100}, {22, 0, 100}, {22, 0, 100}, {22, 0, 100}},
-    /* MONO      FM-BITE, CUTOFF, GLIDE, SUB-DRV 
-    {{18, 0, 100}, {16, 30, 100}, {10, 0, 40}, {16, 0, 100}}, JSM */
+    /* MONO      FM-BITE, CUTOFF, GLIDE, SUB-DRV */
+    {{18, 0, 100}, {16, 30, 100}, {10, 0, 40}, {16, 0, 100}}, 
     /* KIT       TUNE, DECAY, PUNCH, FM-GRIT */
     {{6, 0, 100}, {16, 0, 100}, {16, 0, 100}, {14, 0, 70}},
     /* PERC      PITCH, MALLET, RING, SPACE */

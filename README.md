@@ -1,6 +1,6 @@
 # Aplus, a fork of A22
 - Third page on the SEQ pannel, lists the notes on the track and you can delete them one by one to fix mistakes
-- Added KNOT and KOI instruments, removed MONO.
+- Added KNOT and KOI instruments from h1.
 - One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier and gives more available events by saving 1 byte.
 - MIDI OUT: each track sends midi out on its channel
 - Multiple projects (snaps = projects): use snaps (SAVE + white key) to load a snap, SAVE to save it. All projects share the same tape but events are filtered. The snap number is displayed on the top left. Limits: no recording of tempo and loop length. Everything is still recorded on the same tape, but events (LEv in synth.c) store the snap of the note. Bitwise filtering notes by snap (bits 3..5 of flags) tells if a note should be played - its snap should be the same number as h1_cur_snap() (see also macro LEV_OK to simply check if a note is playable)   

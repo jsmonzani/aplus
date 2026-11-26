@@ -8,7 +8,7 @@
 #define NVOICE 8
 #define NSTEP 64                 /* step sequencer max steps */
 #define NSNOTE 8                 /* polyphony per step */
-#define NINST 15                 /* JS 15 engines no mono: FM-4, ELECTRIC, STACK, ANALOG, SHAPER, WIRE, HAZE, MONO, KIT, PERC,
+#define NINST 16                 /* JS 15 engines no mono: FM-4, ELECTRIC, STACK, ANALOG, SHAPER, WIRE, HAZE, MONO, KIT, PERC,
                                   * WAVE, CHIP, CYCLE, SKINS (new ones go at the end: a saved tape names engines by number) */
 #define NSLOT 16                 /* state slots for engines: room for four more than NINST (state version 5) */
 #define NALGO 8                  /* 8 curated algorithms/presets per engine */
@@ -255,7 +255,7 @@ typedef struct InstDef {
 } InstDef;
 
 extern const InstDef inst_fm4, inst_electric, inst_stack, inst_analog, inst_shaper;
-extern const InstDef inst_wire, inst_haze, /*inst_mono,*/ inst_kit, inst_perc, inst_wave, inst_chip, inst_cycle;
+extern const InstDef inst_wire, inst_haze, inst_mono, inst_kit, inst_perc, inst_wave, inst_chip, inst_cycle;
 extern const InstDef inst_koi, inst_knot; // JSM
 extern const InstDef inst_skins;
 f32 perc_mode_ratio(int algo, int m);    /* PERC's mode table (tests/perc.c) */

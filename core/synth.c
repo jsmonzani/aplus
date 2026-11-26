@@ -11,7 +11,7 @@ uint32_t eng_rng = 0x2F6E2B1u;
 
 const InstDef *const insts[] = {
     &inst_fm4, &inst_electric, &inst_stack, &inst_analog, &inst_shaper,
-    &inst_wire, &inst_haze, /* &inst_mono,*/ &inst_kit, &inst_perc, &inst_wave, &inst_chip,
+    &inst_wire, &inst_haze,  &inst_mono, &inst_kit, &inst_perc, &inst_wave, &inst_chip,
     &inst_cycle, &inst_skins
     , &inst_koi, &inst_knot // JSM
 };
@@ -26,7 +26,7 @@ static const f32 algo_gain[][NALGO] = {
     /* 4 SHAPER   */ {1.05f, 1.22f, 1.12f, 1.28f, 1.06f, 1.30f, 1.08f, 1.05f},
     /* 5 WIRE    */ {1.50f, 1.48f, 1.46f, 1.38f, 1.20f, 1.38f, 0.72f, 0.76f},
     /* 6 HAZE */ {1.22f, 0.92f, 1.20f, 1.08f, 1.26f, 1.32f, 1.20f, 1.12f},
-    /* 7 MONO JSM   {1.92f, 1.58f, 1.38f, 1.24f, 1.24f, 1.20f, 1.44f, 1.28f},*/
+    /* 7 MONO */   {1.92f, 1.58f, 1.38f, 1.24f, 1.24f, 1.20f, 1.44f, 1.28f},
     /* 8 KIT      */ {1.25f, 1.42f, 1.45f, 1.42f, 1.40f, 1.45f, 1.45f, 1.75f},
     /* 9 PERC      */ {1.12f, 1.32f, 1.14f, 1.38f, 2.10f, 1.10f, 1.14f, 1.92f},
     /* 10 WAVE     */ {0.47f, 0.50f, 0.52f, 1.08f, 0.49f, 0.54f, 0.52f, 0.48f},
