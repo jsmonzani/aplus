@@ -104,7 +104,6 @@ static void post(uint32_t e)
 }
 //JSM
 
-
 void eng_post_del(int trk, int idx)
 {
     post(((uint32_t)EV_DEL_NOTE << 8) | ((uint32_t)idx & 255u) | (((uint32_t)(trk & 3)) << 17));
@@ -1212,7 +1211,7 @@ static void tape_paste(void)
     loop_gen++;
 }
 //JSM
-int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *total)
+int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t *vel, int *total)
 {
     int i, count = 0, found = 0;
     trk &= 3;
@@ -1221,6 +1220,7 @@ int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *tot
             if (count == idx) {
                 if (tick) *tick = lev[i].tick;
                 if (note) *note = (uint8_t)(lev[i].d1 & 127u);
+                if (vel)  *vel  = lev[i].d2 ? lev[i].d2 : 110u;
                 found = 1;
             }
             count++;
@@ -1230,6 +1230,102 @@ int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *tot
     return found;
 }
 
+void eng_tape_note_edit(int trk, int idx, int d_tick, int d_vel)
+{
+    int i, count = 0, on_pos = -1, off_pos = -1, max_t;
+    uint16_t on_tick = 0;
+    uint8_t target_note = 0;
+    trk &= 3;
+    if (idx < 0) return;
+
+    for (i = 0; i < nlev; i++) {
+        if ((lev[i].trk & 3) == trk && (lev[i].flags & 7) == LEV_ON) {
+            if (count == idx) {
+                on_pos = i;
+                on_tick = lev[i].tick;
+                target_note = (uint8_t)(lev[i].d1 & 127u);
+                break;
+            }
+            count++;
+        }
+    }
+    if (on_pos < 0) return;
+
+    if (d_vel) {
+        int nv = iclamp((int)(lev[on_pos].d2 ? lev[on_pos].d2 : 110) + d_vel, 1, 127);
+        lev[on_pos].d2 = (uint8_t)nv;
+        saved_n++;
+        loop_gen++;
+    }
+
+    if (d_tick) {
+        LEv on_ev = lev[on_pos], off_ev;
+        int has_off = 0, new_on, new_off, clamped_delta;
+
+        for (i = on_pos + 1; i < nlev; i++) {
+            if ((lev[i].trk & 3) == trk && (lev[i].d1 & 127u) == target_note &&
+                (lev[i].flags & 7) == LEV_OFF && lev[i].tick >= on_tick) {
+                off_pos = i;
+                break;
+            }
+        }
+        if (off_pos < 0) {
+            for (i = 0; i < nlev; i++) {
+                if (i != on_pos && (lev[i].trk & 3) == trk &&
+                    (lev[i].d1 & 127u) == target_note && (lev[i].flags & 7) == LEV_OFF) {
+                    off_pos = i;
+                    break;
+                }
+            }
+        }
+
+        max_t = (int)loop_len > 0 ? (int)loop_len - 1 : 65535;
+        new_on = iclamp((int)on_ev.tick + d_tick, 0, max_t);
+        clamped_delta = new_on - (int)on_ev.tick;
+        if (clamped_delta == 0) return;
+
+        if (off_pos >= 0) {
+            off_ev = lev[off_pos];
+            new_off = iclamp((int)off_ev.tick + clamped_delta, new_on, max_t);
+            off_ev.tick = (uint16_t)new_off;
+            has_off = 1;
+        }
+        on_ev.tick = (uint16_t)new_on;
+
+        /* retire on_pos et off_pos de lev[] */
+        for (i = 0; i < nlev; i++) {
+            if (i == on_pos || i == off_pos) continue;
+            int dst = i;
+            if (on_pos >= 0 && i > on_pos) dst--;
+            if (off_pos >= 0 && i > off_pos) dst--;
+            lev[dst] = lev[i];
+        }
+        if (on_pos >= 0) nlev--;
+        if (off_pos >= 0) nlev--;
+
+        /* réinsère on_ev puis off_ev en conservant l'ordre chronologique */
+        i = nlev;
+        while (i > 0 && lev[i - 1].tick > on_ev.tick) {
+            lev[i] = lev[i - 1];
+            i--;
+        }
+        lev[i] = on_ev;
+        nlev++;
+
+        if (has_off) {
+            i = nlev;
+            while (i > 0 && lev[i - 1].tick > off_ev.tick) {
+                lev[i] = lev[i - 1];
+                i--;
+            }
+            lev[i] = off_ev;
+            nlev++;
+        }
+
+        saved_n++;
+        loop_gen++;
+    }
+}
 static void tape_del_note(int trk, int note_idx)
 {
     int i, count = 0, on_pos = -1, off_pos = -1;

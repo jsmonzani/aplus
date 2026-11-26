@@ -187,27 +187,28 @@ const ParamDef *page_param(int pg, int i)
             else { dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_PLINK; }
             return &dyn_p;
         }
+        // JSM SEQ 3rd page, notes list
         if (sub == 2) {
             int total = 0;
-            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
-            if (total <= 0) {
-                notes_sel = 0;
-            } else if (notes_sel >= total) {
-                notes_sel = (uint8_t)(total - 1);
-            }
+            uint8_t v = 0;
+            eng_tape_note_info(st.track & 3, 0, 0, 0, 0, &total);
+            if (total <= 0) notes_sel = 0;
+            else if (notes_sel >= total) notes_sel = (uint8_t)(total - 1);
             dyn_p.min = 0; dyn_p.show_off = 0; dyn_p.opts = 0;
             if (i == 0) {
-                dyn_p.name = "TRACK"; dyn_p.kind = PK_ENUM; dyn_p.max = 3; dyn_p.opts = O_TRK;
-            } else if (i == 1) {
                 dyn_p.name = "TIME"; dyn_p.kind = PK_INT;
                 dyn_p.max = total > 0 ? (uint8_t)((total - 1) < 255 ? (total - 1) : 255) : 0;
+            } else if (i == 1) {
+                dyn_p.name = "NUDGE"; dyn_p.kind = PK_INT; dyn_p.max = 100;
             } else if (i == 2) {
-                dyn_p.name = "NOTE"; dyn_p.kind = PK_INT; dyn_p.max = 0;
+                dyn_p.name = "VEL"; dyn_p.kind = PK_INT; dyn_p.min = 1; dyn_p.max = 127;
+                if (total > 0 && eng_tape_note_info(st.track & 3, notes_sel, 0, 0, &v, 0))
+                    dyn_p.min = 1;
             } else {
                 dyn_p.name = "DEL"; dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_ONOFF;
             }
             return &dyn_p;
-        }
+        }        
     }
     return &pages[pg].p[i];
 }
@@ -250,14 +251,14 @@ uint8_t *page_value(int pg, int i)
             if (i == 2) return &st.seq[3];
             return &st.seq[7];
         }
-        if (sub == 2) {
-            static uint8_t note_val;
-            uint8_t n = 0;
-            if (i == 0) return &notes_trk;
-            if (i == 1) return &notes_sel;
+        if (sub == 2) { // JSM
+            static uint8_t cur_val;
+            uint8_t v = 0;
+            if (i == 0) return &notes_sel;
+            if (i == 1) { cur_val = 50; return &cur_val; }
             if (i == 2) {
-                note_val = eng_tape_note_info(notes_trk & 3, notes_sel, 0, &n, 0) ? n : 0;
-                return &note_val;
+                cur_val = eng_tape_note_info(st.track & 3, notes_sel, 0, 0, &v, 0) ? v : 0;
+                return &cur_val;
             }
             return &notes_del;
         }
@@ -395,12 +396,12 @@ static APART void value_text(int pg, int i, char *out)
         }
         return;
     }
-    if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 2) {
-        if (i == 1) {
+    if (pg == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[pg] == 2) { //JSM
+        if (i == 0) {
             uint16_t tk = 0;
             int bt, meas, in_bar, beat, div;
             char *d;
-            if (!eng_tape_note_info(notes_trk & 3, notes_sel, &tk, 0, 0)) {
+            if (!eng_tape_note_info(st.track & 3, notes_sel, &tk, 0, 0, 0)) {
                 put_s(out, "---");
                 return;
             }
@@ -416,20 +417,17 @@ static APART void value_text(int pg, int i, char *out)
             put_i(d, div);
             return;
         }
+        if (i == 1) {
+            put_s(out, "NUDGE");
+            return;
+        }
         if (i == 2) {
-            static const char *const NNAME[12] = {
-                "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
-            };
-            uint8_t midi_n = 0;
-            int oct;
-            char *d;
-            if (!eng_tape_note_info(notes_trk & 3, notes_sel, 0, &midi_n, 0)) {
+            uint8_t vel = 0;
+            if (!eng_tape_note_info(st.track & 3, notes_sel, 0, 0, &vel, 0)) {
                 put_s(out, "---");
                 return;
             }
-            oct = ((int)midi_n / 12) - 1;
-            d = put_s(out, NNAME[midi_n % 12]);
-            put_i(d, oct);
+            put_i(out, vel);
             return;
         }
     }
@@ -1048,25 +1046,38 @@ static APART void set_param(int i, int v)
         mark_dirty();
         return;
     }
-    if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 2) {
+    if (page == PG_SEQ && st.seq[0] == SEQ_TAPE && subpage[PG_SEQ] == 2) { //JSM
         if (i == 0) {
-            int total = 0;
-            notes_trk = (uint8_t)(v & 3);
-            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
-            if (notes_sel >= total) notes_sel = (uint8_t)(total > 0 ? total - 1 : 0);
+            notes_sel = (uint8_t)v;
             notes_del = 0;
+            sync_cols(PG_SEQ);
+            mark_dirty();
+            return;
+        }
+        if (i == 1) {
+            int delta = v - (int)(*q);
+            if (delta) eng_tape_note_edit(st.track & 3, notes_sel, delta, 0);
+            sync_cols(PG_SEQ);
+            mark_dirty();
+            return;
+        }
+        if (i == 2) {
+            uint8_t cur_v = 0;
+            if (eng_tape_note_info(st.track & 3, notes_sel, 0, 0, &cur_v, 0)) {
+                int delta = v - (int)cur_v;
+                if (delta) eng_tape_note_edit(st.track & 3, notes_sel, 0, delta);
+            }
             sync_cols(PG_SEQ);
             mark_dirty();
             return;
         }
         if (i == 3 && v != 0) {
             int total = 0;
-            eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+            eng_tape_note_info(st.track & 3, 0, 0, 0, 0, &total);
             if (total > 0 && notes_sel < total) {
-                eng_post_del(notes_trk & 3, notes_sel);
-                if (notes_sel >= total - 1) {
+                eng_post_del(st.track & 3, notes_sel);
+                if (notes_sel >= total - 1)
                     notes_sel = (uint8_t)(total > 1 ? total - 2 : 0);
-                }
             }
             notes_del = 0;
             sync_cols(PG_SEQ);
@@ -1673,13 +1684,13 @@ static void draw_tape_page(void)
     int moving = (seq.loop_state == LOOP_PLAY || seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
     int rec = (seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
 
-    if (st.seq[0] != SEQ_STEP && sub == 2) { // JSM view notes
+    if (st.seq[0] != SEQ_STEP && sub == 2) { // JSM
         static const char *const NNAME[12] = {
             "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
         };
         int total = 0, start = 0, row, bt = seq_bar_ticks();
-        draw_topbar(O_TRK[notes_trk & 3], "TAPE NOTES", "3/3");
-        eng_tape_note_info(notes_trk & 3, 0, 0, 0, &total);
+        draw_topbar(O_TRK[st.track & 3], "TAPE NOTES", "3/3");
+        eng_tape_note_info(st.track & 3, 0, 0, 0, 0, &total);
         if (total <= 0) {
             notes_sel = 0;
             g_color(GC_SLATE);
@@ -1697,11 +1708,11 @@ static void draw_tape_page(void)
                 if (idx >= total) break;
                 {
                     uint16_t tk = 0;
-                    uint8_t mn = 0;
-                    char tbuf[16], nbuf[8];
+                    uint8_t mn = 0, vl = 0;
+                    char tbuf[16], nbuf[8], vbuf[8];
                     int meas, in_bar, beat, div, oct, sel = (idx == (int)notes_sel);
                     char *d;
-                    eng_tape_note_info(notes_trk & 3, idx, &tk, &mn, 0);
+                    eng_tape_note_info(st.track & 3, idx, &tk, &mn, &vl, 0);
                     meas = (bt > 0 ? (int)tk / bt : 0) + 1;
                     in_bar = bt > 0 ? (int)tk % bt : (int)tk;
                     beat = in_bar / 96;
@@ -1715,15 +1726,18 @@ static void draw_tape_page(void)
                     oct = ((int)mn / 12) - 1;
                     d = put_s(nbuf, NNAME[mn % 12]);
                     put_i(d, oct);
+                    put_i(vbuf, vl);
 
                     if (sel) {
-                        g_color(KCOL[notes_trk & 3]);
-                        g_box(16.0f, y - 3.0f, 208.0f, 30.0f, 1.2f, 0.85f);
+                        g_color(KCOL[st.track & 3]);
+                        g_box(10.0f, y - 3.0f, 220.0f, 30.0f, 1.2f, 0.85f);
                     }
                     g_color(sel ? GC_WHITE : GC_SLATE);
-                    g_text(26.0f, y + 4.0f, tbuf, 16.0f, 2.4f, sel ? 1.0f : 0.75f, 0);
-                    g_color(sel ? KCOL[notes_trk & 3] : GC_WHITE);
-                    g_text(150.0f, y + 4.0f, nbuf, 16.0f, 2.4f, sel ? 1.0f : 0.75f, 0);
+                    g_text(16.0f, y + 5.0f, tbuf, 14.0f, 2.0f, sel ? 1.0f : 0.75f, 0);
+                    g_color(sel ? KCOL[st.track & 3] : GC_WHITE);
+                    g_text(122.0f, y + 5.0f, nbuf, 14.0f, 2.0f, sel ? 1.0f : 0.75f, 0);
+                    g_color(GC_GOLD);
+                    g_text(222.0f, y + 5.0f, vbuf, 14.0f, 2.0f, sel ? 1.0f : 0.75f, 2);
                 }
             }
         }

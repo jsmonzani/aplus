@@ -348,9 +348,9 @@ uint32_t eng_voices(void);
 int eng_quiet(void);
 uint32_t eng_events_dropped(void);
 void eng_two_cores(int (*run)(void (*fn)(uint32_t), uint32_t arg), int (*wait)(void));
-int eng_seq_has(int trk);
 int eng_seq_has(int trk); // JSM
-int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, int *total); // JSM
+int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t *vel, int *total); // JSM
+void eng_tape_note_edit(int trk, int idx, int d_tick, int d_vel); // JSM
 extern Voice voices[NVOICE];
 extern uint32_t eng_rng;
 int scale_snap(int note);
