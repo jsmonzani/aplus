@@ -1,9 +1,10 @@
 # Aplus, a fork of A22
-- Third page on th SEQ pannel, lists the notes on the track and you can delete them one by one to fix mistakes
-- Proof of concept: adding the COZY instrument
+- Third page on the SEQ pannel, lists the notes on the track and you can delete them one by one to fix mistakes
+- Added KNOT and KOI instruments, removed MONO.
 - One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier.
 - MIDI OUT: each track sends midi out on its channel
-- Knobs are more aligned with Feluca based firmware:
+
+Knobs are more aligned with Feluca-based firmwares, i.e.:
 - PRESETS     Preset/Algo (1..8) or FX Type on FX page  
 - ALGORITHM   Switch Track T1..T4
 - SELECT      Instrument (Home)
