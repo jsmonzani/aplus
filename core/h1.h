@@ -150,3 +150,6 @@ uint32_t h1_voices_active(void);
  * sliders from this; set() moves a control there outright, the way a slider wants. */
 int h1_control(int enc, int *lo, int *hi, const char **name, const char **text);
 void h1_control_set(int enc, int value);
+// JSM
+uint8_t h1_cur_snap(void);
+void h1_set_cur_snap(uint8_t snap);

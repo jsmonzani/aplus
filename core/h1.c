@@ -69,6 +69,9 @@ static const uint8_t ALGO_K0[][NALGO][4] = {
 };
 typedef char a22_k0_rows[sizeof ALGO_K0 / sizeof ALGO_K0[0] == NINST ? 1 : -1];
 
+// JSM
+static uint8_t cur_snap = 0;
+
 void knobs_default(int inst, int algo)
 {
     int a, k;
@@ -176,6 +179,7 @@ static void defaults(void)
         inst_default(i);
     for (i = 0; i < NTRACK; i++)
         track_default(i);
+    cur_snap = 0; // JSM
 }
 
 SMALL void h1_init(uint32_t sample_rate)
@@ -218,6 +222,10 @@ typedef struct H1StateV4 {
     Snap snap[NSNAP];
     uint8_t steps[NSTEP][NSNOTE], step_trk[NSTEP][NSNOTE], step_vel[NSTEP][NSNOTE];
 } H1StateV4;
+
+uint8_t h1_cur_snap(void) { return (uint8_t)(cur_snap & 7u); }
+void h1_set_cur_snap(uint8_t snap) { cur_snap = (uint8_t)(snap & 7u); }
+
 #define V4_SPAN(a, b) (offsetof(H1StateV4, b) - offsetof(H1StateV4, a))
 #define V5_SPAN(a, b) (offsetof(H1State, b) - offsetof(H1State, a))
 typedef char a22_v4_size[sizeof(H1StateV4) == 2648u ? 1 : -1];   /* (what 0.1.0 to 0.4.0 save) */
@@ -239,6 +247,7 @@ SMALL int h1_state_load(const void *blob, uint32_t size)
     uint32_t magic = 0, n;
     int i, j, a;
     int ninst, nfx;
+    cur_snap = 0; // JSM
     if (!blob || size < offsetof(H1State, version) + 1u)
         return -1;
     for (n = 0; n < 4u; n++)

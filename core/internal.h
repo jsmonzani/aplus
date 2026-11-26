@@ -101,6 +101,14 @@ typedef struct Snap {
     uint8_t fx_p[4];
 } Snap;
 
+// JSM
+#define LEV_KIND(f)       ((uint8_t)((f) & 7u))
+#define LEV_SNAP(f)       ((uint8_t)(((f) >> 3) & 7u))
+#define LEV_SET_SNAP(f, s) \
+    ((uint8_t)(((f) & (uint8_t)~(7u << 3)) | (((uint8_t)(s) & 7u) << 3)))
+#define LEV_MAKE_FLAGS(k, s, fresh) \
+    ((uint8_t)(((k) & 7u) | (((s) & 7u) << 3) | ((fresh) ? 0x80u : 0u)))
+
 #define H1_MAGIC 0x32324132u     /* "2A22" - isolated from h1 saves */
 #define H1_VERSION 5u     /* 3: chord memory; 4: twelve engines (WAVE, CHIP); 5: room for 16 engines and 12
                            * effects (NSLOT, NFXSLOT), and how many effects it was saved with (nfx) */

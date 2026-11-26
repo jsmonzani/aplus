@@ -543,12 +543,13 @@ void h1_key(int key, int down)
         for (i = 0; i < NSNAP; i++) {
             if (key == SNAP_KEYS[i]) {
                 btn_fired[H1_BTN_SAVE] = 3;
+                h1_set_cur_snap((uint8_t)i); // JSM
                 if ((btn_held & (1u << H1_BTN_EDIT)) || !st.snap[i].used) {
                     eng_post(EV_SNAP_SAVE, i);
                     toast("SNAP ", i + 1, 1, " SAVED", -1);
                 } else {
                     eng_post(EV_SNAP_LOAD, i);
-                    dice_inst = -1;              /* (EDIT + ENV has nothing to swap back over a snapshot) */
+                    dice_inst = -1;
                     toast("SNAP ", i + 1, 1, " LOADED", -1);
                 }
                 mark_dirty();
@@ -2203,6 +2204,7 @@ SMALL void ui_init(void)
     ring_t = 9.0f;
     dice_inst = -1;
     notes_trk = notes_sel = notes_del = 0;
+    h1_set_cur_snap(0); // JSM
 }
 
 /* ---- dirty-tile presentation (60 MHz SPI DMA) ----------------------------------------- */
