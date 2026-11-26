@@ -16,7 +16,7 @@
 #define NSNAP 8                  /* 8 instant user patch snapshots (SAVE + white keys 1..8) */
 #define NFX 8                    /* 8 selectable FX engines (new ones go at the end: a state names them by number) */
 #define NFXSLOT 12               /* state slots for effects: room for four more than NFX (state version 5) */
-#define NLEV 2048                /* tape events across all 4 tracks (notes + K1..K4 motion) */
+#define NLEV 2340 /*JSM 2048 on 8 bytes = 16384 but I've reduced LEv to 7 bytes*/                /* tape events across all 4 tracks (notes + K1..K4 motion) */
 #define NRIFF 64              /* Riff sequencer max steps */
 #define NSHAKE 6               /* Shake max bouncing physics balls */
 #define CTRL 32                  /* frames per control block (~0.72 ms at 44.1 kHz) */
@@ -349,6 +349,7 @@ int eng_quiet(void);
 uint32_t eng_events_dropped(void);
 void eng_two_cores(int (*run)(void (*fn)(uint32_t), uint32_t arg), int (*wait)(void));
 int eng_seq_has(int trk); // JSM
+int eng_tape_ev_free(void); // JSM
 int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t *vel, int *total); // JSM
 void eng_tape_note_edit(int trk, int idx, int d_tick, int d_vel); // JSM
 extern Voice voices[NVOICE];

@@ -1774,7 +1774,7 @@ static void draw_tape_page(void)
     {
         char b[12];
         put_s(put_i(b, seq.bars), " BAR");
-        fit_text(120.0f, 52.0f, b, 10.0f, 58.0f, 0.9f);
+        fit_text(120.0f, 42.0f, b, 10.0f, 58.0f, 0.9f);
     }
     /* JSM background color In/Out box  */
     {
@@ -1789,7 +1789,14 @@ static void draw_tape_page(void)
         g_line(xi, 88.0f, xi, 164.0f, 1.4f, 0.7f);
         g_line(xo, 88.0f, xo, 164.0f, 1.4f, 0.7f);
     }
-
+    { // JSM show space available
+        int rem = eng_tape_ev_free();
+        char rbuf[12];
+        put_s(put_i(rbuf, rem), "");
+        g_color(rem <= 8 ? GC_RED : (rem <= 32 ? GC_GOLD : GC_WHITE));
+        fit_text(120.0f, 62.0f, rbuf, 10.0f, 58.0f, 0.9f);
+        g_color(GC_WHITE);
+    }
     /* 4 Horizontal Color-Coded Tape Track Lanes (T1 Blue, T2 Green, T3 White, T4 Orange) */
     for (t = 0; t < NTRACK; t++) {
         f32 y0 = 92.0f + (f32)t * 18.0f;

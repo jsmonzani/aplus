@@ -834,7 +834,7 @@ typedef struct LEv {
     uint8_t d1;      /* note (0..127) or knob (0..3) */
     uint8_t flags;   /* bits 0..2 kind, bit 7 fresh */
     uint8_t trk;     /* 0..3 */
-    uint8_t part;    /* PART(inst, algo) */
+    // JSM remove uint8_t part;    /* PART(inst, algo) */
     uint8_t d2;      /* vel or knob value */
     uint8_t rsv;
 } LEv;
@@ -1076,7 +1076,7 @@ static void tape_record_note(int note, int on, int vel)
     e->d1    = (uint8_t)note;
     e->flags = (uint8_t)((on ? LEV_ON : LEV_OFF) | 0x80u);
     e->trk   = (uint8_t)trk;
-    e->part  = (uint8_t)part;
+    // JSM e->part  = (uint8_t)part;
     e->d2    = (uint8_t)(on ? iclamp(vel, 1, 127) : 0);
     e->rsv   = 0;
     if (on) {
@@ -1101,7 +1101,7 @@ static void tape_record_auto(int knob, int val)
     e->d1    = (uint8_t)(knob & 3);
     e->flags = (uint8_t)(LEV_AUTO | 0x80u);
     e->trk   = (uint8_t)cur_trk;
-    e->part  = live_part();
+    // JSM e->part  = live_part();
     e->d2    = (uint8_t)iclamp(val, 0, 100);
     e->rsv   = 0;
     trun[cur_trk].auto_k[knob & 3] = e->d2;
@@ -1130,7 +1130,7 @@ static void tape_stop(void)
  * the clip holds, events stay on the tape (they were lost); what the track sounds is let go. */
 static void tape_cut(void)
 {
-    static uint8_t opart[128];
+    // JSM static uint8_t opart[128];
     uint32_t open[4] = {0u, 0u, 0u, 0u};
     f32 in_t, out_t;
     int i, w = 0, nop = 0, p;
@@ -1155,7 +1155,7 @@ static void tape_cut(void)
             nclip++;
             if (kind == LEV_ON && !is_open) {
                 open[p >> 5] |= 1u << (p & 31);
-                opart[p] = e->part;
+                //JSM opart[p] = e->part;
                 nop++;
             } else if (kind == LEV_OFF) {
                 open[p >> 5] &= ~(1u << (p & 31));
@@ -1172,7 +1172,7 @@ static void tape_cut(void)
             c->d1 = (uint8_t)p;
             c->flags = LEV_OFF;
             c->trk = (uint8_t)cur_trk;
-            c->part = opart[p];
+            //JSM c->part = opart[p];
             c->d2 = 0;
             c->rsv = 0;
             nop--;
@@ -1204,13 +1204,18 @@ static void tape_paste(void)
         *e = clip_ev[i];
         e->tick = (uint16_t)tk;
         e->trk  = (uint8_t)cur_trk;
-        e->part = live_part();
+        //JSM e->part = live_part();
         e->flags &= 0x7Fu;
     }
     if (loop_state == LOOP_EMPTY && nlev) loop_state = LOOP_IDLE;
     loop_gen++;
 }
 //JSM
+int eng_tape_ev_free(void)
+{
+    int used = nlev + nopen + 2;
+    return used < NLEV ? (NLEV - used) : 0;
+}
 int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t *vel, int *total)
 {
     int i, count = 0, found = 0;
@@ -2693,7 +2698,7 @@ int eng_loop_load(const uint8_t *b, uint32_t n)
         d->d1    = e[2] & 127u;
         d->flags = e[3] & 7u;
         d->trk   = e[4] & 3u;
-        d->part  = part_ok(e[5]) ? e[5] : PART(st.trk[d->trk].inst, st.trk[d->trk].algo);
+        // JSM d->part  = part_ok(e[5]) ? e[5] : PART(st.trk[d->trk].inst, st.trk[d->trk].algo);
         d->d2    = e[6] & 127u;
         d->rsv   = 0;
         k++;
