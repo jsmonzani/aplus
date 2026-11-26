@@ -506,7 +506,7 @@ static APART void open_page(int pg)
         int ns = page_nsub(pg);
         if (ns > 1) {
             subpage[pg] = (subpage[pg] + 1) % ns;
-            if (pg == PG_SEQ && subpage[pg] == 2) {
+            if (pg == PG_SEQ && subpage[pg] == 2) { // JSM
                 notes_trk = st.track & 3;
                 notes_sel = 0;
                 notes_del = 0;
@@ -551,6 +551,7 @@ void h1_key(int key, int down)
                     eng_post(EV_SNAP_LOAD, i);
                     dice_inst = -1;
                     toast("SNAP ", i + 1, 1, " LOADED", -1);
+                    eng_loop_gen_force_inc(); // JSM force refresh in tape
                 }
                 mark_dirty();
                 return;
@@ -728,6 +729,7 @@ SMALL void h1_button(int btn, int down)
         }
         if (btn == H1_BTN_SAVE) {
             dirty = 1; dirty_ms = now - 5000u;
+            eng_post(EV_SNAP_SAVE, h1_cur_snap()); // JSM save the instruments state
             toast(eng_quiet() ? "SAVED" : "SAVE WHEN QUIET", 0, 0, 0, -1);   /* (the save waits for silence) */
         }
         if (btn == H1_BTN_EDIT) {
@@ -1303,16 +1305,22 @@ static void draw_topbar(const char *left_tag, const char *title, const char *rig
 
     /* Track pill on left colored with track color (T1..T4) */
     g_color(KCOL[st.track & 3]);
-    g_box(6.0f, 5.0f, 22.0f, 15.0f, 1.4f, 0.9f);
-    g_text(17.0f, 8.0f, left_tag, 9.0f, 1.4f, 1.0f, 1);
+    g_box(30.0f, 5.0f, 22.0f, 15.0f, 1.4f, 0.9f);
+    g_text(41.0f, 8.0f, left_tag, 9.0f, 1.4f, 1.0f, 1);
 
     /* Engine / Page title (auto-scaled so it never overlaps right status tag) */
     g_color(GC_WHITE);
     {
         f32 sz = 10.5f, tw = g_text_w(title, sz);
         if (tw > 128.0f && tw > 0.1f) sz *= 128.0f / tw;
-        g_text(34.0f, 12.5f - sz * 0.5f, title, sz, maxf(1.3f, sz * 0.15f), 1.0f, 0);
+        g_text(58.0f /*JSM 34.0f*/, 12.5f - sz * 0.5f, title, sz, maxf(1.3f, sz * 0.15f), 1.0f, 0);
     }
+
+    /* JSM show current SNAP*/
+    char snapnum[2] = "S.";
+    put_i(snapnum + 1, 1+h1_cur_snap());
+    g_color(GC_GOLD);
+    g_text(1.0f, 5.0f, snapnum, 14.0f, 2.3f, 2.0f, 0);
 
     /* Right status tag (BPM / FX / Algo) */
     g_color(GC_SLATE);

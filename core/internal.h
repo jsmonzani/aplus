@@ -104,6 +104,7 @@ typedef struct Snap {
 // JSM
 #define LEV_KIND(f)       ((uint8_t)((f) & 7u))
 #define LEV_SNAP(f)       ((uint8_t)(((f) >> 3) & 7u))
+#define LEV_OK(f) (LEV_SNAP(f.flags) == h1_cur_snap()) /*are we on the current snap?*/
 #define LEV_SET_SNAP(f, s) \
     ((uint8_t)(((f) & (uint8_t)~(7u << 3)) | (((uint8_t)(s) & 7u) << 3)))
 #define LEV_MAKE_FLAGS(k, s, fresh) \
@@ -336,6 +337,7 @@ extern void (*eng_midi_fn)(uint8_t status, uint8_t d1, uint8_t d2);
 const uint8_t *eng_loop_blob(uint32_t *size);
 int eng_loop_load(const uint8_t *b, uint32_t n);
 uint32_t eng_loop_gen(void);
+void eng_loop_gen_force_inc(void); // JSM
 int eng_loop_taking(void);
 int eng_loop_quiet(void);
 int eng_layer_count(void);

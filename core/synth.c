@@ -832,7 +832,7 @@ enum { LEV_OFF = 0, LEV_ON = 1, LEV_AUTO = 2 };
 typedef struct LEv {
     uint16_t tick;
     uint8_t d1;      /* note (0..127) or knob (0..3) */
-    uint8_t flags;   /* bits 0..2 kind, bit 7 fresh */
+    uint8_t flags;   /* bits 0..2 kind, bits 3..5 snap, bit 7 fresh */
     uint8_t trk;     /* 0..3 */
     // JSM remove uint8_t part;    /* PART(inst, algo) */
     uint8_t d2;      /* vel or knob value */
@@ -951,7 +951,8 @@ static void tape_play_fwd(f32 a, f32 b)
 {
     int i;
     for (i = lev_find(a); i < nlev && (f32)lev[i].tick < b; i++)
-        if (!(lev[i].flags & 0x80u))
+        //if (!(lev[i].flags & 0x80u))
+        if (LEV_OK(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
             tape_fire_ev(&lev[i], 0);
 }
 
@@ -959,7 +960,8 @@ static void tape_play_rev(f32 hi, f32 lo)
 {
     int i;
     for (i = lev_find(hi) - 1; i >= 0 && (f32)lev[i].tick >= lo; i--)
-        if (!(lev[i].flags & 0x80u))
+        //if (!(lev[i].flags & 0x80u))
+        if (LEV_OK(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
             tape_fire_ev(&lev[i], 1);
 }
 
@@ -1074,7 +1076,8 @@ static void tape_record_note(int note, int on, int vel)
     if (!e) return;
     e->tick  = (uint16_t)clampf(t, 0.0f, loop_len - 1.0f);
     e->d1    = (uint8_t)note;
-    e->flags = (uint8_t)((on ? LEV_ON : LEV_OFF) | 0x80u);
+    //e->flags = (uint8_t)((on ? LEV_ON : LEV_OFF) | 0x80u);
+    e->flags = LEV_MAKE_FLAGS((on ? LEV_ON : LEV_OFF), h1_cur_snap(), 1); //JSM
     e->trk   = (uint8_t)trk;
     // JSM e->part  = (uint8_t)part;
     e->d2    = (uint8_t)(on ? iclamp(vel, 1, 127) : 0);
@@ -1099,7 +1102,8 @@ static void tape_record_auto(int knob, int val)
     if (!e) return;
     e->tick  = tick;
     e->d1    = (uint8_t)(knob & 3);
-    e->flags = (uint8_t)(LEV_AUTO | 0x80u);
+    //e->flags = (uint8_t)(LEV_AUTO | 0x80u);
+    e->flags = LEV_MAKE_FLAGS(LEV_AUTO , h1_cur_snap(), 1); //JSM
     e->trk   = (uint8_t)cur_trk;
     // JSM e->part  = live_part();
     e->d2    = (uint8_t)iclamp(val, 0, 100);
@@ -1221,7 +1225,7 @@ int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t 
     int i, count = 0, found = 0;
     trk &= 3;
     for (i = 0; i < nlev; i++) {
-        if ((lev[i].trk & 3) == trk && (lev[i].flags & 7) == LEV_ON) {
+        if ((lev[i].trk & 3) == trk && LEV_KIND(lev[i].flags) == LEV_ON && LEV_OK(lev[i])) {
             if (count == idx) {
                 if (tick) *tick = lev[i].tick;
                 if (note) *note = (uint8_t)(lev[i].d1 & 127u);
@@ -1244,7 +1248,9 @@ void eng_tape_note_edit(int trk, int idx, int d_tick, int d_vel)
     if (idx < 0) return;
 
     for (i = 0; i < nlev; i++) {
-        if ((lev[i].trk & 3) == trk && (lev[i].flags & 7) == LEV_ON) {
+        if ((lev[i].trk & 3) == trk && 
+        LEV_KIND(lev[i].flags) == LEV_ON &&
+        LEV_OK(lev[i])) {
             if (count == idx) {
                 on_pos = i;
                 on_tick = lev[i].tick;
@@ -1908,7 +1914,8 @@ static void handle(uint32_t e)
             tape_release_trk(t);                 /* (that track's notes, not every track's) */
             if (t == cur_trk) rec_forget();
             for (i = 0; i < nlev; i++)
-                if ((lev[i].trk & 3) != t) lev[w++] = lev[i];
+                // if ((lev[i].trk & 3) != t) lev[w++] = lev[i]; // JSM
+                if ( ((lev[i].trk & 3) != t) || !LEV_OK(lev[i]) ) lev[w++] = lev[i]; // JSM
             nlev = w;
             for (i = 0; i < 4; i++) trun[t].auto_on[i] = 0;
             if (!nlev) { loop_state = LOOP_EMPTY; loop_pos = 0.0f; }
@@ -2556,7 +2563,7 @@ void eng_seq_info(SeqInfo *si)
                 for (c = 0; c < 32; c++)
                     seq_dens.dens[t][c] = 0;
             for (i = 0; i < ne && i < NLEV; i++) {
-                if ((lev[i].flags & 7) == LEV_ON) {
+                if ((LEV_OK(lev[i])) && (lev[i].flags & 7) == LEV_ON) { // JSM only count notes on the current snap
                     int col = iclamp((int)((f32)lev[i].tick * 32.0f / loop_len), 0, 31);
                     uint8_t *d = &seq_dens.dens[lev[i].trk & 3][col];
                     if (*d < 15) (*d)++;
@@ -2696,7 +2703,8 @@ int eng_loop_load(const uint8_t *b, uint32_t n)
         if (!d) break;
         d->tick  = (uint16_t)tick;
         d->d1    = e[2] & 127u;
-        d->flags = e[3] & 7u;
+        // d->flags = e[3] & 7u;
+        d->flags = e[3] & ~0x80u;   /* JSM keep kind (0..2) and snap (3..5), without bit fresh (7) */
         d->trk   = e[4] & 3u;
         // JSM d->part  = part_ok(e[5]) ? e[5] : PART(st.trk[d->trk].inst, st.trk[d->trk].algo);
         d->d2    = e[6] & 127u;
@@ -2713,6 +2721,7 @@ int eng_loop_load(const uint8_t *b, uint32_t n)
 }
 
 uint32_t eng_loop_gen(void)   { return loop_gen; }
+void eng_loop_gen_force_inc(void) {loop_gen++; } // JSM force refresh, used for forcing the tape to draw after loading a snap
 int eng_loop_taking(void)     { return loop_state == LOOP_REC || loop_state == LOOP_DUB; }
 int eng_loop_quiet(void)      { return loop_state == LOOP_EMPTY || loop_state == LOOP_IDLE; }
 /* Silent, for a flash erase (it stalls the sound about 50 ms): no voice, the tape and the pattern stopped, no key held
