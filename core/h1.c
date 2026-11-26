@@ -228,7 +228,7 @@ void h1_set_cur_snap(uint8_t snap) { cur_snap = (uint8_t)(snap & 7u); }
 
 #define V4_SPAN(a, b) (offsetof(H1StateV4, b) - offsetof(H1StateV4, a))
 #define V5_SPAN(a, b) (offsetof(H1State, b) - offsetof(H1State, a))
-typedef char a22_v4_size[sizeof(H1StateV4) == 2648u ? 1 : -1];   /* (what 0.1.0 to 0.4.0 save) */
+typedef char a22_v4_size[sizeof(H1StateV4) == 2648u + 8u/* JSM 8 bytes for snap tempo save*/ ? 1 : -1];   /* (what 0.1.0 to 0.4.0 save) */
 typedef char a22_v4_head[offsetof(H1StateV4, fx_p) == offsetof(H1State, fx_p) &&
                          offsetof(H1StateV4, version) == offsetof(H1State, version) ? 1 : -1];
 typedef char a22_v4_mid[V4_SPAN(master, ip) == V5_SPAN(master, ip) ? 1 : -1];

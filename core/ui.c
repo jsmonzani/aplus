@@ -730,7 +730,11 @@ SMALL void h1_button(int btn, int down)
         if (btn == H1_BTN_SAVE) {
             dirty = 1; dirty_ms = now - 5000u;
             eng_post(EV_SNAP_SAVE, h1_cur_snap()); // JSM save the instruments state
-            toast(eng_quiet() ? "SAVED" : "SAVE WHEN QUIET", 0, 0, 0, -1);   /* (the save waits for silence) */
+            toast(eng_quiet() ? "SAVED" : "SILENCING...", 0, 0, 0, -1);   /* (the save waits for silence) */
+            if (!eng_quiet()) { // JSM silence automatically
+                eng_post(EV_PANIC, 0);
+            }
+
         }
         if (btn == H1_BTN_EDIT) {
             if (seq.riff_rec) {

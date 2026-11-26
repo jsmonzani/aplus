@@ -1716,6 +1716,7 @@ static void snap_save(int idx)
     Snap *sn = &st.snap[idx & 7];
     int k, inst = cur_i, algo = st.ip[inst].algo & 7;
     saved_n++;
+    sn->tempo = st.glo[0]; // JSM
     sn->used = 1;
     sn->inst = (uint8_t)inst;
     sn->algo = (uint8_t)algo;
@@ -1734,6 +1735,7 @@ static void snap_load(int idx)
     const Snap *sn = &st.snap[idx & 7];
     int k;
     if (!sn->used || sn->inst >= NINST) return;
+    st.glo[0] = sn->tempo; // JSM
     cur_i = sn->inst;
     st.inst = sn->inst;
     st.ip[cur_i].algo = sn->algo & 7;

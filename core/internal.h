@@ -99,6 +99,8 @@ typedef struct Snap {
     uint8_t menv[4];
     uint8_t lfo[4];
     uint8_t fx_p[4];
+    uint8_t tempo; // JSM
+    
 } Snap;
 
 // JSM
