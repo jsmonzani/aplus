@@ -152,10 +152,53 @@ static void koi_post(const Blk *b, f32 *l, f32 *r, int n)
     }
 }
 
+static f32 koi_phase, koi_kick, koi_kickv, koi_lev;
+static uint32_t koi_seen;
+
 static SMALL void koi_draw(const Vis *vis)
 {
-}
+    f32 dt = vis->dt;
+    f32 mallet = sat(K.mallet), ripple = sat(K.ripple), linger = sat(K.linger), sink = sat(K.sink);
+    f32 cx = 120.0f, cy = 114.0f + sink * 12.0f;
+    f32 xy[2 * 64];
+    int i;
 
+    if (vis->fresh) {
+        koi_seen = vis->notes;
+        koi_phase = koi_kick = koi_kickv = koi_lev = 0.0f;
+    }
+    if (vis->notes != koi_seen) {
+        koi_seen = vis->notes;
+        koi_kickv += 2.0f + 4.0f * mallet;
+    }
+
+    spring_z(&koi_kick, &koi_kickv, 0.0f, 24.0f, 0.4f, dt);
+    koi_lev += (minf(1.0f, vis->level * 3.0f) - koi_lev) * minf(1.0f, dt * lerpf(18.0f, 4.0f, linger));
+    koi_phase = fractf(koi_phase + dt * (0.1f + 0.5f * ripple));
+
+    /* Ondes concentriques (ripple + linger) */
+    for (i = 0; i < 4; i++) {
+        f32 u = fractf(koi_phase + (f32)i * 0.25f);
+        f32 fade = (1.0f - u) * lerpf(0.9f, 0.45f, sink);
+        g_color((i & 1) ? GC_BLUE : GC_GREEN);
+        g_ring(cx, cy, lerpf(12.0f, 70.0f + 8.0f * koi_kick, u), 1.5f + 2.0f * mallet * (1.0f - u), fade * (0.3f + 0.7f * linger));
+    }
+
+    /* Anneau modulé (ripple + sink) */
+    for (i = 0; i < 64; i++) {
+        f32 th = (f32)i / 64.0f;
+        f32 s = vis->scope[(vis->scope_pos + i * 4) & (SCOPE_N - 1)];
+        f32 r = lerpf(52.0f, 34.0f, sink) + (s * 14.0f + sin_turns((2.0f + 6.0f * ripple) * th + koi_phase) * 8.0f * ripple);
+        xy[2 * i]     = cx + cos_turns(th) * r;
+        xy[2 * i + 1] = cy + sin_turns(th) * r;
+    }
+    g_color(GC_ORANGE);
+    g_poly(xy, 64, 1, 2.0f, 0.4f + 0.6f * koi_lev);
+
+    /* Impact central (mallet + sink) */
+    g_color(GC_WHITE);
+    g_disc(cx, cy, 4.0f + 8.0f * mallet * (0.3f + 0.7f * koi_lev) + 3.0f * koi_kick, lerpf(0.9f, 0.4f, sink));
+}
 const InstDef inst_koi = {
     "KOI",
     {104, 238, 150},

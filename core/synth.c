@@ -186,7 +186,7 @@ static void track_snap_live(int t)
     for (b = 0; b < sizeof was; b++) was[b] = now_b[b];   /* (bytes: the core links no libc) */
     tr->inst = (uint8_t)inst;
     tr->algo = (uint8_t)algo;
-    tr->has_snap = 1;
+    //tr->has_snap = 1;
     for (k = 0; k < 4; k++) {
         tr->knob[k] = KNOBS(inst, algo)[k];
         tr->env[k]  = st.ip[inst].env[k];
@@ -1716,7 +1716,8 @@ static void snap_save(int idx)
     Snap *sn = &st.snap[idx & 7];
     int k, inst = cur_i, algo = st.ip[inst].algo & 7;
     saved_n++;
-    sn->tempo = st.glo[0]; // JSM
+    //sn->tempo = st.glo[0]; // JSM
+    //sn->bars = st.seq[1]; // JSM number of bars in log2
     sn->used = 1;
     sn->inst = (uint8_t)inst;
     sn->algo = (uint8_t)algo;
@@ -1735,7 +1736,8 @@ static void snap_load(int idx)
     const Snap *sn = &st.snap[idx & 7];
     int k;
     if (!sn->used || sn->inst >= NINST) return;
-    st.glo[0] = sn->tempo; // JSM
+    //st.glo[0] = sn->tempo; // JSM
+    //st.seq[1] = sn->bars; // JSM number of bars in log2
     cur_i = sn->inst;
     st.inst = sn->inst;
     st.ip[cur_i].algo = sn->algo & 7;

@@ -1765,7 +1765,7 @@ static void draw_tape_page(void)
                 seq.clip_count ? "CLIP RDY" : O_SPEED[st.tape[0] & 3]);
 
     /* Iconic Spinning Twin Tape Reels! */
-    for (i = 0; i < 2; i++) {
+    /*for (i = 0; i < 2; i++) {
         f32 rx = i == 0 ? 64.0f : 176.0f, ry = 58.0f, rr = 22.0f;
         int s;
         g_color(rec ? GC_RED : GC_WHITE);
@@ -1777,17 +1777,21 @@ static void draw_tape_page(void)
             g_line(rx + cos_turns(a) * 8.0f, ry + sin_turns(a) * 8.0f,
                    rx + cos_turns(a) * (rr - 3.0f), ry + sin_turns(a) * (rr - 3.0f), 2.0f, 0.85f);
         }
-    }
+    }*/
     /* Tape ribbon connecting reels */
-    g_color(GC_SLATE);
+    /*g_color(GC_SLATE);
     g_line(64.0f, 36.0f, 176.0f, 36.0f, 1.2f, 0.45f);
-    g_line(64.0f, 80.0f, 176.0f, 80.0f, 1.2f, 0.45f);
+    g_line(64.0f, 80.0f, 176.0f, 80.0f, 1.2f, 0.45f);*/
     /* Speed / bar readout between reels */
-    g_color(GC_GOLD);
     {
-        char b[12];
-        put_s(put_i(b, seq.bars), " BAR");
-        fit_text(120.0f, 42.0f, b, 10.0f, 58.0f, 0.9f);
+       g_color(GC_GOLD);
+        char b[3];
+        put_i(b, seq.bars);
+        //fit_text(120.0f, 42.0f, b, 18.0f, 100.0f, 0.9f);
+        g_text(36.0f, 36.0f, b, 20.0f, 3.0f, 1.0f, 2);
+        g_color(GC_SLATE);
+        g_text(48.0f, 46.0f, "BARS", 10.0f, 1.0f, 1.0f, 0);
+
     }
     /* JSM background color In/Out box  */
     {
@@ -1803,11 +1807,12 @@ static void draw_tape_page(void)
         g_line(xo, 88.0f, xo, 164.0f, 1.4f, 0.7f);
     }
     { // JSM show space available
-        int rem = eng_tape_ev_free();
-        char rbuf[12];
-        put_s(put_i(rbuf, rem), "");
-        g_color(rem <= 8 ? GC_RED : (rem <= 32 ? GC_GOLD : GC_WHITE));
-        fit_text(120.0f, 62.0f, rbuf, 10.0f, 58.0f, 0.9f);
+        int rem = eng_tape_ev_free() >> 1; // 2 events per note ON and OFF
+        char rbuf[8]="MEM:";
+        put_s(put_i(rbuf+4, rem), "");
+        g_color(rem <= 8 ? GC_RED : (rem <= 32 ? GC_GOLD : GC_SLATE));
+        //fit_text(120.0f, 62.0f, rbuf, 18.0f, 60.0f, 0.9f);
+        g_text(238.0f, 42.0f, rbuf, 14.0f, 2.0f, 1.0f, 2);
         g_color(GC_WHITE);
     }
     /* 4 Horizontal Color-Coded Tape Track Lanes (T1 Blue, T2 Green, T3 White, T4 Orange) */
