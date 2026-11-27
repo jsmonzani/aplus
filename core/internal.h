@@ -103,6 +103,7 @@ typedef struct Snap { // goes from 24 bytes to 21 bytes -> * 8 = 192
     // uint8_t fx_p[4]; // JSM nope this is global
     //uint8_t tempo; // JSM
     //uint8_t bars;  // JSM number of bars
+    uint8_t rsv[3]; // for alignment
 } Snap;
 
 typedef struct Song { // Bytes 11 + 4 * 21 ) = 95 * 8 songs = 760
@@ -112,6 +113,7 @@ typedef struct Song { // Bytes 11 + 4 * 21 ) = 95 * 8 songs = 760
     uint8_t glo[4];
     uint8_t bars;  // JSM number of bars
     Snap snap[NTRACK]; // instrument state
+    uint8_t rsv; // for alignment
 } Song;
 
 
@@ -119,7 +121,7 @@ typedef struct Song { // Bytes 11 + 4 * 21 ) = 95 * 8 songs = 760
 // JSM
 #define LEV_KIND(f)       ((uint8_t)((f) & 7u))
 #define LEV_SNAP(f)       ((uint8_t)(((f) >> 3) & 7u))
-#define LEV_OK(f) (LEV_SNAP(f.flags) == h1_cur_snap()) /*are we on the current snap?*/
+#define LEV_OK(f) (LEV_SNAP(f.flags) == h1_cur_song()) /*are we on the current snap?*/
 #define LEV_SET_SNAP(f, s) \
     ((uint8_t)(((f) & (uint8_t)~(7u << 3)) | (((uint8_t)(s) & 7u) << 3)))
 #define LEV_MAKE_FLAGS(k, s, fresh) \
@@ -172,12 +174,11 @@ typedef struct H1State {
     InstParams ip[NSLOT];
     uint8_t knob[NSLOT][NALGO][4];
     Track trk[NTRACK];
-    //Snap snap[NSNAP];
     Song song[NSONG];
     uint8_t steps[NSTEP][NSNOTE];
     uint8_t step_trk[NSTEP][NSNOTE];
     uint8_t step_vel[NSTEP][NSNOTE];
-} H1State;
+} H1State; // Max 3840 bytes
 
 #define KNOBS(inst, algo) (st.knob[(uint32_t)(inst) < NSLOT ? (uint32_t)(inst) : 0u][(uint32_t)(algo) < NALGO ? (uint32_t)(algo) : 0u])
 #define KNOBS_NOW(inst) KNOBS(inst, st.ip[inst].algo)
@@ -321,7 +322,7 @@ enum {
     EV_SNAP_LOAD,                /* load patch from snapshot 0..7 */
     EV_MIDI_OFF,                  /* MIDI's all notes off (CC 123): the notes MIDI plays end, the tape plays on */
     EV_DEL_NOTE,                     /* JSM delete note index (a) on track ((vel >> 1) & 3) */
-    EV_SONG_LOAD, EV_SONG_SAVE, EV_SONG_DELETE /* JSM */
+    EV_SONG_SWITCH, EV_SONG_SAVE, EV_SONG_DELETE /* JSM */
 };
 enum { LOOP_EMPTY, LOOP_IDLE, LOOP_ARMED, LOOP_REC, LOOP_PLAY, LOOP_DUB };
 

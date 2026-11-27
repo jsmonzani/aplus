@@ -1077,7 +1077,7 @@ static void tape_record_note(int note, int on, int vel)
     e->tick  = (uint16_t)clampf(t, 0.0f, loop_len - 1.0f);
     e->d1    = (uint8_t)note;
     //e->flags = (uint8_t)((on ? LEV_ON : LEV_OFF) | 0x80u);
-    e->flags = LEV_MAKE_FLAGS((on ? LEV_ON : LEV_OFF), h1_cur_snap(), 1); //JSM
+    e->flags = LEV_MAKE_FLAGS((on ? LEV_ON : LEV_OFF), h1_cur_song(), 1); //JSM
     e->trk   = (uint8_t)trk;
     // JSM e->part  = (uint8_t)part;
     e->d2    = (uint8_t)(on ? iclamp(vel, 1, 127) : 0);
@@ -1103,7 +1103,7 @@ static void tape_record_auto(int knob, int val)
     e->tick  = tick;
     e->d1    = (uint8_t)(knob & 3);
     //e->flags = (uint8_t)(LEV_AUTO | 0x80u);
-    e->flags = LEV_MAKE_FLAGS(LEV_AUTO , h1_cur_snap(), 1); //JSM
+    e->flags = LEV_MAKE_FLAGS(LEV_AUTO , h1_cur_song(), 1); //JSM
     e->trk   = (uint8_t)cur_trk;
     // JSM e->part  = live_part();
     e->d2    = (uint8_t)iclamp(val, 0, 100);
@@ -1792,7 +1792,7 @@ static void song_save(int idx)
     saved_n++;
 }
 
-static void song_load(int idx)
+static void song_switch(int idx)
 {
     const Song *sg;
     int t, k;
@@ -1970,8 +1970,8 @@ static void handle(uint32_t e)
     case EV_SONG_SAVE:
         song_save(a);
         break;
-    case EV_SONG_LOAD:
-        song_load(a);
+    case EV_SONG_SWITCH:
+        song_switch(a);
         break;        
     case EV_SONG_DELETE:
         song_delete(a);

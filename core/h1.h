@@ -151,6 +151,6 @@ uint32_t h1_voices_active(void);
 int h1_control(int enc, int *lo, int *hi, const char **name, const char **text);
 void h1_control_set(int enc, int value);
 // JSM
-uint8_t h1_cur_snap(void);
-void h1_set_cur_snap(uint8_t snap);
+uint8_t h1_cur_song(void);
+void h1_set_cur_song(uint8_t snap);
 static uint8_t song_select = 0;

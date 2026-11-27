@@ -563,7 +563,7 @@ void h1_key(int key, int down)
         for (i = 0; i < NSNAP; i++) {
             if (key == SNAP_KEYS[i]) {
                 btn_fired[H1_BTN_SAVE] = 3;
-                h1_set_cur_snap((uint8_t)i); // JSM
+                h1_set_cur_song((uint8_t)i); // JSM
                 if ((btn_held & (1u << H1_BTN_EDIT)) || !st.snap[i].used) {
                     eng_post(EV_SNAP_SAVE, i);
                     toast("SNAP ", i + 1, 1, " SAVED", -1);
@@ -749,7 +749,7 @@ SMALL void h1_button(int btn, int down)
         }
         if (btn == H1_BTN_SAVE) {
             dirty = 1; dirty_ms = now - 5000u;
-            eng_post(EV_SNAP_SAVE, h1_cur_snap()); // JSM save the instruments state
+            eng_post(EV_SNAP_SAVE, h1_cur_song()); // JSM save the instruments state
             toast(eng_quiet() ? "SAVED" : "SILENCING...", 0, 0, 0, -1);   /* (the save waits for silence) */
             if (!eng_quiet()) { // JSM silence automatically
                 eng_post(EV_PANIC, 0);
@@ -1120,20 +1120,26 @@ static APART void set_param(int i, int v)
             return;
         }
         if (v > 0 && *q == 0) {
-            if ((i == 1 || i == 3) && !st.song[song_select].used) {
-                toast("NO! S", 1+song_select,1," EMPTY",-1 );
+            if (!st.song[song_select].used && (i == 1 || i == 3)) {
+                if (i == 3)
+                    toast("NO! S", song_select,1," EMPTY",-1 );
+                if (i == 1) {
+                    h1_set_cur_song(song_select);
+                    toast("ON SONG ", song_select,1,"",-1 );
+                }
             }
             else if (i == 1)      {
-                eng_post(EV_SONG_LOAD, song_select);
-                toast("SONG ", 1+song_select,1," LOADED",-1 );
+                h1_set_cur_song(song_select);
+                eng_post(EV_SONG_SWITCH, song_select);
+                toast("SWITCHED TO:", song_select,1,"",-1 );
             }
             else if (i == 2) {
                 eng_post(EV_SONG_SAVE, song_select);
-                toast("SONG ", 1+song_select,1," SAVED",-1 );
+                toast("SONG ", song_select,1," SAVED",-1 );
             }
             else if (i == 3) {
                 eng_post(EV_SONG_DELETE, song_select);
-                toast("SONG ", 1+song_select,1," DELETED",-1 );
+                toast("SONG ", song_select,1," DELETED",-1 );
             }
             *q = 0;
             sync_cols(PG_GLO);
@@ -1369,9 +1375,10 @@ static void draw_topbar(const char *left_tag, const char *title, const char *rig
         g_text(58.0f /*JSM 34.0f*/, 12.5f - sz * 0.5f, title, sz, maxf(1.3f, sz * 0.15f), 1.0f, 0);
     }
 
-    /* JSM show current SNAP*/
-    char snapnum[2] = "S.";
-    put_i(snapnum + 1, 1+h1_cur_snap());
+    /* JSM shows current SONG*/
+    char snapnum[4];
+    put_s(snapnum,"S");
+    put_i(snapnum + 1, h1_cur_song());
     g_color(GC_GOLD);
     g_text(1.0f, 5.0f, snapnum, 14.0f, 2.3f, 2.0f, 0);
 
@@ -1833,8 +1840,8 @@ static void draw_tape_page(void)
     g_line(64.0f, 80.0f, 176.0f, 80.0f, 1.2f, 0.45f);*/
     /* Speed / bar readout between reels */
     {
-       g_color(GC_GOLD);
-        char b[3];
+        g_color(GC_GOLD);
+        char b[4];
         put_i(b, seq.bars);
         //fit_text(120.0f, 42.0f, b, 18.0f, 100.0f, 0.9f);
         g_text(36.0f, 36.0f, b, 20.0f, 3.0f, 1.0f, 2);
@@ -2008,18 +2015,23 @@ static void draw_glo_page(void)
     }
     if (sub == 3) { // JSM
         int songsel = *page_value(PG_GLO, 0);
+        char s[4];
+        char cursong[4];
+        put_i(cursong, h1_cur_song());
+        g_color(GC_SLATE);
+        g_text(120.0f, 90.0f, "ACTIVE:", 12.0f, 2.0f, 1.0f,1);
+        g_color(GC_WHITE);
+        g_text(120.0f, 120.0f, cursong, 54.0f, 8.0f, 1.0f,1);
         for (i = 0; i < NSONG; i++) {
-            char s[2];
-            s[0] = (char)(i + 49); // '1', '2', etc. (attention si i >= 9, 49 + i dépasse '9')
-            s[1] = '\0';
+            put_i(s, i);
             g_color(i == songsel ? GC_GOLD : (st.song[i].used ? GC_WHITE :  GC_SLATE));
             g_text(4.0f + (f32)i * 240.0f / (f32)NSONG , 40.0f, s, 20.0f, 2.0f, 1.0f,0);
             g_color(GC_WHITE);
-            g_text(2.0f, 200.0f, "SONG", 14.0f, 2.0f, 1.0f,0);
-            g_text(60.0f, 200.0f, "LOAD", 14.0f, 2.0f, 1.0f,0);
-            g_text(120.0f, 200.0f, "SAVE", 14.0f, 2.0f, 1.0f,0);
-            g_text(180.0f, 200.0f, "DEL.", 14.0f, 2.0f, 1.0f,0);
         }  
+        g_text(2.0f, 200.0f, "SONG", 12.0f, 2.0f, 1.0f,0);
+        g_text(60.0f, 200.0f, "SWITCH", 12.0f, 2.0f, 1.0f,0);
+        g_text(135.0f, 200.0f, "SAVE", 12.0f, 2.0f, 1.0f,0);
+        g_text(200.0f, 200.0f, "DEL.", 12.0f, 2.0f, 1.0f,0);
               
     }
     g_color(GC_WHITE);
@@ -2288,7 +2300,7 @@ SMALL void ui_init(void)
     ring_t = 9.0f;
     dice_inst = -1;
     notes_trk = notes_sel = notes_del = 0;
-    h1_set_cur_snap(0); // JSM
+    h1_set_cur_song(0); // JSM
 }
 
 /* ---- dirty-tile presentation (60 MHz SPI DMA) ----------------------------------------- */

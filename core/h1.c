@@ -70,7 +70,7 @@ static const uint8_t ALGO_K0[][NALGO][4] = {
 typedef char a22_k0_rows[sizeof ALGO_K0 / sizeof ALGO_K0[0] == NINST ? 1 : -1];
 
 // JSM
-static uint8_t cur_snap = 0;
+static uint8_t cur_song = 0;
 
 void knobs_default(int inst, int algo)
 {
@@ -179,7 +179,7 @@ static void defaults(void)
         inst_default(i);
     for (i = 0; i < NTRACK; i++)
         track_default(i);
-    cur_snap = 0; // JSM
+    cur_song = 0; // JSM
 }
 
 SMALL void h1_init(uint32_t sample_rate)
@@ -207,8 +207,8 @@ typedef char a22_state_fits_store[sizeof(H1State) <= 3840u ? 1 : -1];
 typedef char a22_slots_valid[NINST <= NSLOT && NFX <= NFXSLOT && NSLOT * NALGO < 255 ? 1 : -1];
 
 
-uint8_t h1_cur_snap(void) { return (uint8_t)(cur_snap & 7u); }
-void h1_set_cur_snap(uint8_t snap) { cur_snap = (uint8_t)(snap & 7u); }
+uint8_t h1_cur_song(void) { return (uint8_t)(cur_song & 7u); }
+void h1_set_cur_song(uint8_t snap) { cur_song = (uint8_t)(snap & 7u); }
 
 static void bytes(void *to, const uint8_t *from, uint32_t n)
 {
@@ -218,13 +218,13 @@ static void bytes(void *to, const uint8_t *from, uint32_t n)
 }
 
 
-SMALL int h1_state_load_NEW(const void *blob, uint32_t size)
+SMALL int h1_state_load(const void *blob, uint32_t size)
 {
     const uint8_t *b = (const uint8_t *)blob;
     uint32_t magic = 0, n;
-    int i, j, a, s;
+    int i, j, a, s, t;
     int ninst, nfx;
-    cur_snap = 0;
+    cur_song = 0;
     if (!blob || size < offsetof(H1State, version) + 1u)
         return -1;
     for (n = 0; n < 4u; n++)
@@ -349,24 +349,6 @@ SMALL int h1_state_load_NEW(const void *blob, uint32_t size)
         if (tr->lfo[3] > 6) tr->lfo[3] = 0;
     }
 
-    /*for (i = 0; i < NSNAP; i++) {
-        Snap *sn = &st.snap[i];
-        sn->used &= 1u;
-        if (sn->inst >= NINST) sn->used = 0;
-        if (sn->algo >= NALGO) sn->algo = 0;
-        if (sn->fx_type >= NFX) sn->fx_type = 0;
-        for (j = 0; j < 4; j++) {
-            if (sn->knob[j] > 100) sn->knob[j] = 50;
-            if (sn->env[j] > 100) sn->env[j] = 50;
-            if (sn->menv[j] > 100) sn->menv[j] = 50;
-            if (sn->fx_p[j] > 100) sn->fx_p[j] = 50;
-        }
-        if (sn->lfo[0] > 6) sn->lfo[0] = 0;
-        if (sn->lfo[1] > 100) sn->lfo[1] = 50;
-        if (sn->lfo[2] > 100) sn->lfo[2] = 0;
-        if (sn->lfo[3] > 6) sn->lfo[3] = 0;
-    }*/
-
     for (i = 0; i < NSTEP; i++) {
         for (j = 0; j < NSNOTE; j++) {
             if (st.steps[i][j] > 128) st.steps[i][j] = 0;
@@ -376,7 +358,35 @@ SMALL int h1_state_load_NEW(const void *blob, uint32_t size)
     }
 
     for (s = 0; s < NSONG; s++) {
-        st.song[s].used &= 1u;
+        Song *sg = &st.song[s];
+        sg->used &= 1u;
+        if (sg->fx_type >= NFX) sg->fx_type = FX_PLATE;
+        if (sg->bars > 5u) sg->bars = 2u;
+        sg->glo[0] = (uint8_t)iclamp(sg->glo[0], 40, 240);
+        sg->glo[1] = (uint8_t)iclamp(sg->glo[1], 0, 100);
+        sg->glo[2] = (uint8_t)iclamp(sg->glo[2], 0, 100);
+        sg->glo[3] = (uint8_t)iclamp(sg->glo[3], 20, 100);
+        for (j = 0; j < 4; j++)
+            if (sg->fx_p[j] > 100) sg->fx_p[j] = 100;
+        sg->rsv = 0;
+
+        for (t = 0; t < NTRACK; t++) {
+            Snap *sn = &sg->snap[t];
+            if (sn->inst >= NINST) sn->inst = 0;
+            if (sn->algo >= NALGO) sn->algo = 0;
+            for (j = 0; j < 4; j++) {
+                if (sn->knob[j] > 100) sn->knob[j] = 50;
+                if (sn->env[j] > 100) sn->env[j] = 50;
+                if (sn->menv[j] > 100) sn->menv[j] = 50;
+                if (sn->lfo[j] > 100) sn->lfo[j] = 0;
+            }
+            if (sn->lfo[0] > 6) sn->lfo[0] = 0;
+            if (sn->lfo[3] > 6) sn->lfo[3] = 0;
+            if (sn->mix[IP_CUT] > 100) sn->mix[IP_CUT] = 0;
+            if (sn->mix[IP_PAN] > 100) sn->mix[IP_PAN] = 50;
+            if (sn->mix[IP_SEND] > 100) sn->mix[IP_SEND] = 35;
+            sn->rsv[0] = sn->rsv[1] = sn->rsv[2] = 0;
+        }
     }
 
     st.ninst = NINST;
@@ -387,13 +397,13 @@ SMALL int h1_state_load_NEW(const void *blob, uint32_t size)
     return 0;
 }
 
-SMALL int h1_state_load(const void *blob, uint32_t size)
+SMALL int h1_state_load_OLD(const void *blob, uint32_t size)
 {
     const uint8_t *b = (const uint8_t *)blob;
     uint32_t magic = 0, n;
     int i, j, a;
     int ninst, nfx;
-    cur_snap = 0; // JSM
+    cur_song = 0; // JSM
     if (!blob || size < offsetof(H1State, version) + 1u)
         return -1;
     for (n = 0; n < 4u; n++)
