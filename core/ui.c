@@ -97,7 +97,7 @@ static int page_nsub(int pg)
     case PG_ARP: return arp_shake() ? 2 : 1;   /* SHAKE: 0 MODE GRAV SPIN BOUNCE, 1 MODE CAGE */
     case PG_MIX: return 4;   /* 0 VOL, 1 PAN, 2 FX SEND, 3 MASTER EQ/DRIVE */
     case PG_ENV: return 2;   /* 0 AMP ADSR, 1 MOD ENV */
-    case PG_GLO: return 3;   /* 0 GLOBAL, 1 KEYS, 2 CHORD */
+    case PG_GLO: return 4;   /* 0 GLOBAL, 1 KEYS, 2 CHORD JSM 3 SONGS */
     case PG_SEQ: return 3;   /* 0 TAPE DECK, 1 TAPE EDIT (or STEP), 2 TAPE NOTES */
     default:     return 1;
     }
@@ -163,6 +163,21 @@ const ParamDef *page_param(int pg, int i)
         else { dyn_p.kind = PK_PCT; dyn_p.max = 100; }
         return &dyn_p;
     }
+    if (pg == PG_GLO && sub == 3) {
+        dyn_p.min = 0; dyn_p.show_off = 0; dyn_p.opts = 0;
+        if (i == 0) {
+            dyn_p.name = "SONG"; dyn_p.kind = PK_INT;
+            dyn_p.max = NSONG;
+        } else if (i == 1) {
+            dyn_p.name = "LOAD"; dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_ONOFF;
+        } else if (i == 2) {
+            dyn_p.name = "SAVE"; dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_ONOFF;
+        } else {
+            dyn_p.name = "DEL"; dyn_p.kind = PK_ENUM; dyn_p.max = 1; dyn_p.opts = O_ONOFF;
+        }
+        return &dyn_p;
+
+    }    
     if (pg == PG_ARP && arp_shake() && i > 0) {  /* (K1 is MODE: the page's own) */
         int s = arp_sub();
         dyn_p.name = SHAKE_N[s][i]; dyn_p.kind = PK_PCT; dyn_p.min = 0; dyn_p.opts = 0;
@@ -231,6 +246,11 @@ uint8_t *page_value(int pg, int i)
             static uint8_t zero;
             if (i == 1 && st.chord[0] != CHORD_SCALE && st.chord[0] != CHORD_SHAPE) { zero = 0; return &zero; }
             return &st.chord[i];
+        }
+        if (sub == 3) {
+            static uint8_t song_act[3]; /* [0]=LOAD, [1]=SAVE, [2]=DEL */
+            if (i == 0) return &song_select;
+            if (i >= 1 && i <= 3) { song_act[i - 1] = 0; return &song_act[i - 1]; }
         }
         return sub == 1 ? &st.keys[i] : &st.glo[i];
     case PG_ARP:
@@ -535,7 +555,7 @@ static void set_seq_mode(int m)
 
 void h1_key(int key, int down)
 {
-    int i;
+    //int i;
     if (key < 0 || key >= H1_NKEYS) return;
     if (down) clear_all_keep();
     /* SAVE + White Keys 1..8: Instant Patch Snapshots! */
@@ -1093,6 +1113,34 @@ static APART void set_param(int i, int v)
         }
     }
     if (page == PG_ARP && i == 0 && v == ARP_SHAKE) subpage[PG_ARP] = 0;   /* SHAKE opens on 1/2 */
+    if (page == PG_GLO && subpage[PG_GLO] == 3) {  /* JSM Song page */
+        if (i == 0) {
+            song_select = (uint8_t)v;
+            mark_dirty();
+            return;
+        }
+        if (v > 0 && *q == 0) {
+            if ((i == 1 || i == 3) && !st.song[song_select].used) {
+                toast("NO! S", 1+song_select,1," EMPTY",-1 );
+            }
+            else if (i == 1)      {
+                eng_post(EV_SONG_LOAD, song_select);
+                toast("SONG ", 1+song_select,1," LOADED",-1 );
+            }
+            else if (i == 2) {
+                eng_post(EV_SONG_SAVE, song_select);
+                toast("SONG ", 1+song_select,1," SAVED",-1 );
+            }
+            else if (i == 3) {
+                eng_post(EV_SONG_DELETE, song_select);
+                toast("SONG ", 1+song_select,1," DELETED",-1 );
+            }
+            *q = 0;
+            sync_cols(PG_GLO);
+            mark_dirty();
+            return;
+        }        
+    }      
     *q = (uint8_t)v;
     if (page == PG_GLO && subpage[PG_GLO] == 1 && i == 3 && !v) eng_post(EV_UNLATCH, 0);
     if (page == PG_GLO && subpage[PG_GLO] == 2 && i == 0) {  /* a new mode: its type in its range */
@@ -1100,6 +1148,7 @@ static APART void set_param(int i, int v)
         if (st.chord[1] > tmax) st.chord[1] = (uint8_t)tmax;
         if (v != CHORD_OFF) chord_last = (uint8_t)v;
     }
+  
     if (page == PG_ARP && i == 0) sync_cols(PG_ARP);
     mark_dirty();
 }
@@ -1692,7 +1741,7 @@ static void draw_mix_page(void)
 
 static void draw_tape_page(void)
 {
-    int sub = subpage[PG_SEQ], t, c, i;
+    int sub = subpage[PG_SEQ], t, c;
     f32 spd_mul = st.tape[0] == TAPE_SPD_HALF ? 0.5f : (st.tape[0] == TAPE_SPD_2X ? 2.0f : (st.tape[0] == TAPE_SPD_REV ? -1.0f : 1.0f));
     int moving = (seq.loop_state == LOOP_PLAY || seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
     int rec = (seq.loop_state == LOOP_REC || seq.loop_state == LOOP_DUB);
@@ -1925,35 +1974,53 @@ static void draw_glo_page(void)
 {
     int sub = subpage[PG_GLO], i;
     char buf[24];
-    draw_topbar(O_TRK[st.track], sub == 2 ? "CHORD" : (sub == 1 ? "KEYS / SCALE" : "GLOBAL"),
-                sub == 2 ? "3/3" : (sub == 1 ? "2/3" : "1/3"));
+    draw_topbar(O_TRK[st.track], sub == 2 ? "CHORD" : (sub == 1 ? "KEYS / SCALE" : ( sub == 3 ? "SONG" : "GLOBAL")),
+                sub == 2 ? "3/4" : (sub == 1 ? "2/4" : (sub == 3 ? "4/4" : "1/4")));
     if (sub == 0) {
         put_s(put_s(buf, "HOLD GLO: "), O_CLICK[st.seq[5] < 3 ? st.seq[5] : 0]);
         g_color(GC_SLATE);
         g_text(18.0f, 38.0f, buf, 8.5f, 1.2f, 0.8f, 0);
     }
-    for (i = 0; i < 4; i++) {
-        const ParamDef *p = page_param(PG_GLO, i);
-        f32 cx = 30.0f + (f32)i * 60.0f, top = 62.0f, bot = 148.0f, h = bot - top;
-        int v = *page_value(PG_GLO, i);
-        f32 tgt = p->max > p->min ? (f32)(v - p->min) / (f32)(p->max - p->min) : 0.0f;
-        f32 y;
-        spring(&col_v[i], &col_vv[i], tgt, 26.0f, vis.dt);
-        y = bot - col_v[i] * h;
-        g_color(GC_SLATE);
-        g_line(cx, top, cx, bot, 2.0f, 0.35f);
-        g_color(KCOL[i]);
-        if (p->show_off < 0) {
-            f32 mid = (top + bot) * 0.5f;
-            g_line(cx, mid, cx, y, 8.0f, 0.95f);
-        } else {
-            g_line(cx, bot, cx, y, 8.0f, 0.95f);
+    if (sub < 3) {
+        for (i = 0; i < 4; i++) {
+            const ParamDef *p = page_param(PG_GLO, i);
+            f32 cx = 30.0f + (f32)i * 60.0f, top = 62.0f, bot = 148.0f, h = bot - top;
+            int v = *page_value(PG_GLO, i);
+            f32 tgt = p->max > p->min ? (f32)(v - p->min) / (f32)(p->max - p->min) : 0.0f;
+            f32 y;
+            spring(&col_v[i], &col_vv[i], tgt, 26.0f, vis.dt);
+            y = bot - col_v[i] * h;
+            g_color(GC_SLATE);
+            g_line(cx, top, cx, bot, 2.0f, 0.35f);
+            g_color(KCOL[i]);
+            if (p->show_off < 0) {
+                f32 mid = (top + bot) * 0.5f;
+                g_line(cx, mid, cx, y, 8.0f, 0.95f);
+            } else {
+                g_line(cx, bot, cx, y, 8.0f, 0.95f);
+            }
+            g_line(cx - 12.0f, y, cx + 12.0f, y, 3.0f, 1.0f);
+            value_text(PG_GLO, i, buf);
+            fit_text(cx, 166.0f, buf, 14.0f, 52.0f, 1.0f);
+            g_color(GC_SLATE);
+            fit_text(cx, 194.0f, p->name, 9.0f, 50.0f, 0.85f);
         }
-        g_line(cx - 12.0f, y, cx + 12.0f, y, 3.0f, 1.0f);
-        value_text(PG_GLO, i, buf);
-        fit_text(cx, 166.0f, buf, 14.0f, 52.0f, 1.0f);
-        g_color(GC_SLATE);
-        fit_text(cx, 194.0f, p->name, 9.0f, 50.0f, 0.85f);
+    }
+    if (sub == 3) { // JSM
+        int songsel = *page_value(PG_GLO, 0);
+        for (i = 0; i < NSONG; i++) {
+            char s[2];
+            s[0] = (char)(i + 49); // '1', '2', etc. (attention si i >= 9, 49 + i dépasse '9')
+            s[1] = '\0';
+            g_color(i == songsel ? GC_GOLD : (st.song[i].used ? GC_WHITE :  GC_SLATE));
+            g_text(4.0f + (f32)i * 240.0f / (f32)NSONG , 40.0f, s, 20.0f, 2.0f, 1.0f,0);
+            g_color(GC_WHITE);
+            g_text(2.0f, 200.0f, "SONG", 14.0f, 2.0f, 1.0f,0);
+            g_text(60.0f, 200.0f, "LOAD", 14.0f, 2.0f, 1.0f,0);
+            g_text(120.0f, 200.0f, "SAVE", 14.0f, 2.0f, 1.0f,0);
+            g_text(180.0f, 200.0f, "DEL.", 14.0f, 2.0f, 1.0f,0);
+        }  
+              
     }
     g_color(GC_WHITE);
 }

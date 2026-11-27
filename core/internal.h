@@ -320,7 +320,8 @@ enum {
     EV_SNAP_SAVE,                /* save patch to snapshot 0..7 */
     EV_SNAP_LOAD,                /* load patch from snapshot 0..7 */
     EV_MIDI_OFF,                  /* MIDI's all notes off (CC 123): the notes MIDI plays end, the tape plays on */
-    EV_DEL_NOTE                     /* JSM delete note index (a) on track ((vel >> 1) & 3) */
+    EV_DEL_NOTE,                     /* JSM delete note index (a) on track ((vel >> 1) & 3) */
+    EV_SONG_LOAD, EV_SONG_SAVE, EV_SONG_DELETE /* JSM */
 };
 enum { LOOP_EMPTY, LOOP_IDLE, LOOP_ARMED, LOOP_REC, LOOP_PLAY, LOOP_DUB };
 

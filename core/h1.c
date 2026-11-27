@@ -217,6 +217,176 @@ static void bytes(void *to, const uint8_t *from, uint32_t n)
         *d++ = *from++;
 }
 
+
+SMALL int h1_state_load_NEW(const void *blob, uint32_t size)
+{
+    const uint8_t *b = (const uint8_t *)blob;
+    uint32_t magic = 0, n;
+    int i, j, a, s;
+    int ninst, nfx;
+    cur_snap = 0;
+    if (!blob || size < offsetof(H1State, version) + 1u)
+        return -1;
+    for (n = 0; n < 4u; n++)
+        ((uint8_t *)&magic)[n] = b[n];
+    if (magic != H1_MAGIC)
+        return -1;
+    if (b[offsetof(H1State, version)] == H1_VERSION && size == sizeof st) {
+        bytes(&st, b, (uint32_t)sizeof st);
+    } else {
+        return -1;
+    }
+
+    /* the engines and effects it was saved with: the slots from there on come up as new */
+    ninst = st.ninst <= NINST ? st.ninst : NINST;
+    nfx = st.nfx <= NFX ? st.nfx : NFX;
+    for (i = ninst; i < NINST; i++)
+        inst_default(i);
+    for (i = nfx; i < NFX; i++)
+        for (j = 0; j < 4; j++)
+            st.fx_p[i][j] = FX_DEFAULTS[i][j];
+    for (i = NINST; i < NSLOT; i++) {              /* (slots no engine has yet: empty) */
+        uint8_t *p = (uint8_t *)&st.ip[i];
+        for (n = 0; n < (uint32_t)sizeof st.ip[i]; n++)
+            p[n] = 0;
+        for (a = 0; a < NALGO; a++)
+            for (j = 0; j < 4; j++)
+                st.knob[i][a][j] = 0;
+    }
+    for (i = NFX; i < NFXSLOT; i++)
+        for (j = 0; j < 4; j++)
+            st.fx_p[i][j] = 0;
+
+    /* clamp every loaded parameter safely */
+    st.magic = H1_MAGIC;
+    st.version = H1_VERSION;
+    if (st.inst >= NINST) st.inst = 0;
+    if (st.track >= NTRACK) st.track = 0;
+    st.octave = (int8_t)iclamp(st.octave, -2, 2);
+    st.hud &= 1u;
+    st.keys[0] = (uint8_t)iclamp(st.keys[0], 0, 11);
+    st.keys[1] = (uint8_t)iclamp(st.keys[1], 0, 7);
+    st.keys[2] = (uint8_t)iclamp(st.keys[2], 0, 100);
+    st.keys[3] &= 1u;
+    st.glo[0] = (uint8_t)iclamp(st.glo[0], 40, 240);
+    st.glo[1] = (uint8_t)iclamp(st.glo[1], 0, 100);
+    st.glo[2] = (uint8_t)iclamp(st.glo[2], 0, 100);
+    st.glo[3] = (uint8_t)iclamp(st.glo[3], 20, 100);
+    st.seq[0] &= 1u;
+    if (st.seq[1] > 5) st.seq[1] = 2;
+    if (st.seq[2] > 4) st.seq[2] = 0;
+    if (st.seq[3] > 2) st.seq[3] = 1;
+    if (st.seq[4] > 2) st.seq[4] = 1;
+    if (st.seq[5] > 2) st.seq[5] = CLICK_REC;
+    st.seq[6] = 1;
+    st.seq[7] &= 1u;
+    if (st.tape[0] > 3) st.tape[0] = TAPE_SPD_1X;
+    if (st.tape[1] > 31) st.tape[1] = 0;
+    if (st.tape[2] > 32) st.tape[2] = 0;
+    st.tape[3] = TRICK_OFF;
+    if (st.fx_type >= NFX) st.fx_type = FX_PLATE;
+    st.fx_on &= 1u;
+    for (i = 0; i < NFX; i++)
+        for (j = 0; j < 4; j++)
+            if (st.fx_p[i][j] > 100) st.fx_p[i][j] = 100;
+    if (st.fx_p[FX_DELAY][1] > 7) st.fx_p[FX_DELAY][1] = 3;
+    for (j = 0; j < 4; j++) {
+        if (st.master[j] > 100) st.master[j] = 50;
+        if (st.shake[j] > 100) st.shake[j] = 50;
+    }
+    if (st.riff_len > NRIFF) st.riff_len = 0;
+    if (st.riff_root > 127) st.riff_root = 60;
+    for (i = 0; i < NRIFF; i++)
+        if (st.riff[i] > 128) st.riff[i] = 0;
+    if (st.chord[0] > CHORD_SHAPE) st.chord[0] = CHORD_OFF;
+    if (st.chord[1] >= CHORD_NSHAPE) st.chord[1] = 0;
+    if (st.chord[2] > 3) st.chord[2] = 0;
+    if (st.chord[3] > 100) st.chord[3] = 0;
+    if (st.chord_n < 1 || st.chord_n > CHORD_MAX) st.chord_n = 1;
+    st.chord_mem[0] = 0;
+    for (i = 1; i < CHORD_MAX; i++)
+        if (st.chord_mem[i] > 48) st.chord_mem[i] = 0;
+
+    for (i = 0; i < NINST; i++) {
+        if (st.ip[i].algo >= NALGO) st.ip[i].algo = 0;
+        for (j = 0; j < 4; j++) {
+            if (st.ip[i].knob0[j] > 100) st.ip[i].knob0[j] = 100;
+            if (st.ip[i].env[j] > 100) st.ip[i].env[j] = 100;
+            if (st.ip[i].menv[j] > 100) st.ip[i].menv[j] = 100;
+            for (a = 0; a < NALGO; a++)
+                if (st.knob[i][a][j] > 100) st.knob[i][a][j] = 100;
+        }
+        if (st.ip[i].lfo[0] > 6) st.ip[i].lfo[0] = 0;
+        if (st.ip[i].lfo[1] > 100) st.ip[i].lfo[1] = 50;
+        if (st.ip[i].lfo[2] > 100) st.ip[i].lfo[2] = 0;
+        if (st.ip[i].lfo[3] > 6) st.ip[i].lfo[3] = 0;
+        if (st.ip[i].arp[0] >= NARPMODE) st.ip[i].arp[0] = 0;
+        if (st.ip[i].arp[1] > 5) st.ip[i].arp[1] = 3;
+        st.ip[i].arp[2] = (uint8_t)iclamp(st.ip[i].arp[2], 1, 4);
+        st.ip[i].arp[3] = (uint8_t)iclamp(st.ip[i].arp[3], 5, 100);
+        if (st.ip[i].mix[IP_CUT] > 100) st.ip[i].mix[IP_CUT] = 0;
+        if (st.ip[i].mix[IP_PAN] > 100) st.ip[i].mix[IP_PAN] = 50;
+        if (st.ip[i].mix[IP_SEND] > 100) st.ip[i].mix[IP_SEND] = 35;
+    }
+
+    for (i = 0; i < NTRACK; i++) {
+        Track *tr = &st.trk[i];
+        if (tr->inst >= NINST) tr->inst = 0;
+        if (tr->algo >= NALGO) tr->algo = 0;
+        if (tr->vol > 100) tr->vol = 88;
+        if (tr->pan > 100) tr->pan = 50;
+        if (tr->send > 100) tr->send = 35;
+        tr->mute &= 3u;
+        tr->has_snap = 0;
+        for (j = 0; j < 4; j++) {
+            if (tr->knob[j] > 100) tr->knob[j] = 50;
+            if (tr->env[j] > 100) tr->env[j] = 50;
+            if (tr->menv[j] > 100) tr->menv[j] = 50;
+        }
+        if (tr->lfo[0] > 6) tr->lfo[0] = 0;
+        if (tr->lfo[1] > 100) tr->lfo[1] = 50;
+        if (tr->lfo[2] > 100) tr->lfo[2] = 0;
+        if (tr->lfo[3] > 6) tr->lfo[3] = 0;
+    }
+
+    /*for (i = 0; i < NSNAP; i++) {
+        Snap *sn = &st.snap[i];
+        sn->used &= 1u;
+        if (sn->inst >= NINST) sn->used = 0;
+        if (sn->algo >= NALGO) sn->algo = 0;
+        if (sn->fx_type >= NFX) sn->fx_type = 0;
+        for (j = 0; j < 4; j++) {
+            if (sn->knob[j] > 100) sn->knob[j] = 50;
+            if (sn->env[j] > 100) sn->env[j] = 50;
+            if (sn->menv[j] > 100) sn->menv[j] = 50;
+            if (sn->fx_p[j] > 100) sn->fx_p[j] = 50;
+        }
+        if (sn->lfo[0] > 6) sn->lfo[0] = 0;
+        if (sn->lfo[1] > 100) sn->lfo[1] = 50;
+        if (sn->lfo[2] > 100) sn->lfo[2] = 0;
+        if (sn->lfo[3] > 6) sn->lfo[3] = 0;
+    }*/
+
+    for (i = 0; i < NSTEP; i++) {
+        for (j = 0; j < NSNOTE; j++) {
+            if (st.steps[i][j] > 128) st.steps[i][j] = 0;
+            if (st.step_trk[i][j] >= NTRACK) st.step_trk[i][j] = 0;
+            if (st.step_vel[i][j] > 127) st.step_vel[i][j] = 127;
+        }
+    }
+
+    for (s = 0; s < NSONG; s++) {
+        st.song[s].used &= 1u;
+    }
+
+    st.ninst = NINST;
+    st.nfx = NFX;
+    st.rsv[0] = st.rsv[1] = 0;
+    eng_init(0);
+    ui_init();
+    return 0;
+}
+
 SMALL int h1_state_load(const void *blob, uint32_t size)
 {
     const uint8_t *b = (const uint8_t *)blob;

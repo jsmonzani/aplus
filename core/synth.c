@@ -1752,6 +1752,116 @@ static void snap_load(int idx)
     track_snap_live(cur_trk);*/
 }
 
+static void song_save(int idx)
+{
+    Song *sg;
+    int t, k;
+    if (idx < 0 || idx >= NSONG)
+        return;
+
+    track_snap_live(cur_trk);
+    sg = &st.song[idx];
+    sg->used = 1u;
+    sg->fx_type = st.fx_type < NFX ? st.fx_type : FX_PLATE;
+    sg->bars = st.seq[1] <= 5u ? st.seq[1] : 2u;
+
+    for (k = 0; k < 4; k++) {
+        sg->fx_p[k] = st.fx_p[sg->fx_type][k];
+        sg->glo[k]  = st.glo[k];
+    }
+
+    for (t = 0; t < NTRACK; t++) {
+        const Track *tr = &st.trk[t];
+        Snap *sn = &sg->snap[t];
+        int inst = tr->inst < NINST ? tr->inst : 0;
+        int algo = tr->algo & 7;
+
+        sn->inst = (uint8_t)inst;
+        sn->algo = (uint8_t)algo;
+        for (k = 0; k < 4; k++) {
+            sn->knob[k] = tr->has_snap ? tr->knob[k] : KNOBS(inst, algo)[k];
+            sn->env[k]  = tr->has_snap ? tr->env[k]  : st.ip[inst].env[k];
+            sn->menv[k] = tr->has_snap ? tr->menv[k] : st.ip[inst].menv[k];
+            sn->lfo[k]  = tr->has_snap ? tr->lfo[k]  : st.ip[inst].lfo[k];
+        }
+        sn->mix[IP_CUT]  = st.ip[inst].mix[IP_CUT];
+        sn->mix[IP_PAN]  = tr->pan;
+        sn->mix[IP_SEND] = tr->send;
+    }
+
+    saved_n++;
+}
+
+static void song_load(int idx)
+{
+    const Song *sg;
+    int t, k;
+    if (idx < 0 || idx >= NSONG)
+        return;
+
+    sg = &st.song[idx];
+    if (!sg->used)
+        return;
+
+    tape_stop();
+    step_stop();
+
+    st.fx_type = sg->fx_type < NFX ? sg->fx_type : FX_PLATE;
+    st.seq[1] = sg->bars <= 5u ? sg->bars : 2u;
+    for (k = 0; k < 4; k++) {
+        st.fx_p[st.fx_type][k] = sg->fx_p[k];
+        st.glo[k] = sg->glo[k];
+    }
+    st.glo[0] = (uint8_t)iclamp(st.glo[0], 40, 240);
+    st.glo[1] = (uint8_t)iclamp(st.glo[1], 0, 100);
+    st.glo[2] = (uint8_t)iclamp(st.glo[2], 0, 100);
+    st.glo[3] = (uint8_t)iclamp(st.glo[3], 20, 100);
+
+    for (t = 0; t < NTRACK; t++) {
+        const Snap *sn = &sg->snap[t];
+        Track *tr = &st.trk[t];
+        int inst = sn->inst < NINST ? sn->inst : 0;
+        int algo = sn->algo & 7;
+
+        tr->inst = (uint8_t)inst;
+        tr->algo = (uint8_t)algo;
+        tr->pan  = sn->mix[IP_PAN] <= 100u ? sn->mix[IP_PAN] : 50u;
+        tr->send = sn->mix[IP_SEND] <= 100u ? sn->mix[IP_SEND] : 35u;
+        tr->has_snap = 1u;
+
+        st.ip[inst].algo = (uint8_t)algo;
+        st.ip[inst].mix[IP_CUT]  = sn->mix[IP_CUT] <= 100u ? sn->mix[IP_CUT] : 0u;
+        st.ip[inst].mix[IP_PAN]  = sn->mix[IP_PAN] <= 100u ? sn->mix[IP_PAN] : 50u;
+        st.ip[inst].mix[IP_SEND] = sn->mix[IP_SEND] <= 100u ? sn->mix[IP_SEND] : 35u;
+
+        for (k = 0; k < 4; k++) {
+            tr->knob[k] = sn->knob[k] <= 100u ? sn->knob[k] : 50u;
+            tr->env[k]  = sn->env[k]  <= 100u ? sn->env[k]  : 50u;
+            tr->menv[k] = sn->menv[k] <= 100u ? sn->menv[k] : 50u;
+            tr->lfo[k]  = sn->lfo[k]  <= 100u ? sn->lfo[k]  : 0u;
+
+            KNOBS(inst, algo)[k] = tr->knob[k];
+            st.ip[inst].env[k]   = tr->env[k];
+            st.ip[inst].menv[k]  = tr->menv[k];
+            st.ip[inst].lfo[k]   = tr->lfo[k];
+        }
+    }
+
+    cur_trk = st.track < NTRACK ? st.track : 0;
+    track_sync_to_live(cur_trk);
+    loop_len = (f32)(tape_bars() * seq_bar_ticks());
+    loop_pos = (f32)(st.tape[1] * seq_bar_ticks());
+    saved_n++;
+}
+
+static void song_delete(int idx)
+{
+    if (idx < 0 || idx >= NSONG)
+        return;
+    st.song[idx].used = 0u;
+    saved_n++;
+}
+
 static void handle(uint32_t e)
 {
     int type = (int)((e >> 8) & 255u), a = (int)(e & 255u);
@@ -1856,6 +1966,15 @@ static void handle(uint32_t e)
         break;
     case EV_SNAP_LOAD:
         snap_load(a & 7);
+        break;
+    case EV_SONG_SAVE:
+        song_save(a);
+        break;
+    case EV_SONG_LOAD:
+        song_load(a);
+        break;        
+    case EV_SONG_DELETE:
+        song_delete(a);
         break;
     case EV_REC:
         if (st.seq[0] == SEQ_STEP) {

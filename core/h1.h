@@ -153,3 +153,4 @@ void h1_control_set(int enc, int value);
 // JSM
 uint8_t h1_cur_snap(void);
 void h1_set_cur_snap(uint8_t snap);
+static uint8_t song_select = 0;
