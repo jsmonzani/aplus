@@ -13,7 +13,8 @@
 #define NSLOT 16                 /* state slots for engines: room for four more than NINST (state version 5) */
 #define NALGO 8                  /* 8 curated algorithms/presets per engine */
 #define NTRACK 4                 /* 4-Track Virtual Tape (T1..T4) */
-#define NSNAP 8                  /* 8 instant user patch snapshots (SAVE + white keys 1..8) */
+#define NSNAP 8                  /* JSM unused, for compatibility 8 instant user patch snapshots (SAVE + white keys 1..8) */
+#define NSONG 8 /*JSM songs*/
 #define NFX 8                    /* 8 selectable FX engines (new ones go at the end: a state names them by number) */
 #define NFXSLOT 12               /* state slots for effects: room for four more than NFX (state version 5) */
 #define NLEV 2340 /*JSM 2048 on 8 bytes = 16384 but I've reduced LEv to 7 bytes*/                /* tape events across all 4 tracks (notes + K1..K4 motion) */
@@ -89,19 +90,31 @@ typedef struct Track {
 } Track;
 
 /* Instant Patch Snapshot (SAVE + White Keys 1..8) */
-typedef struct Snap {
-    uint8_t used;
+typedef struct Snap { // goes from 24 bytes to 21 bytes -> * 8 = 192
+    // uint8_t used;
     uint8_t inst;
     uint8_t algo;
-    uint8_t fx_type;
+    // uint8_t fx_type;
     uint8_t knob[4];
     uint8_t env[4];
     uint8_t menv[4];
     uint8_t lfo[4];
-    uint8_t fx_p[4];
+    uint8_t mix[3];              /* JSM [IP_CUT] volume cut 0..100, [IP_PAN] 0..100 (50=C), [IP_SEND] FX send 0..100 */
+    // uint8_t fx_p[4]; // JSM nope this is global
     //uint8_t tempo; // JSM
     //uint8_t bars;  // JSM number of bars
 } Snap;
+
+typedef struct Song { // Bytes 11 + 4 * 21 ) = 95 * 8 songs = 760
+    uint8_t used;
+    uint8_t fx_type;
+    uint8_t fx_p[4];
+    uint8_t glo[4];
+    uint8_t bars;  // JSM number of bars
+    Snap snap[NTRACK]; // instrument state
+} Song;
+
+
 
 // JSM
 #define LEV_KIND(f)       ((uint8_t)((f) & 7u))
@@ -159,7 +172,8 @@ typedef struct H1State {
     InstParams ip[NSLOT];
     uint8_t knob[NSLOT][NALGO][4];
     Track trk[NTRACK];
-    Snap snap[NSNAP];
+    //Snap snap[NSNAP];
+    Song song[NSONG];
     uint8_t steps[NSTEP][NSNOTE];
     uint8_t step_trk[NSTEP][NSNOTE];
     uint8_t step_vel[NSTEP][NSNOTE];

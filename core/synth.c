@@ -1713,7 +1713,7 @@ static void unlatch(void)
 
 static void snap_save(int idx)
 {
-    Snap *sn = &st.snap[idx & 7];
+    /*Snap *sn = &st.snap[idx & 7];
     int k, inst = cur_i, algo = st.ip[inst].algo & 7;
     saved_n++;
     //sn->tempo = st.glo[0]; // JSM
@@ -1728,12 +1728,12 @@ static void snap_save(int idx)
         sn->menv[k] = st.ip[inst].menv[k];
         sn->lfo[k]  = st.ip[inst].lfo[k];
         sn->fx_p[k] = st.fx_p[st.fx_type][k];
-    }
+    }*/
 }
 
 static void snap_load(int idx)
 {
-    const Snap *sn = &st.snap[idx & 7];
+    /*const Snap *sn = &st.snap[idx & 7];
     int k;
     if (!sn->used || sn->inst >= NINST) return;
     //st.glo[0] = sn->tempo; // JSM
@@ -1749,7 +1749,7 @@ static void snap_load(int idx)
         st.ip[cur_i].lfo[k]  = sn->lfo[k];
         st.fx_p[st.fx_type][k] = sn->fx_p[k];
     }
-    track_snap_live(cur_trk);
+    track_snap_live(cur_trk);*/
 }
 
 static void handle(uint32_t e)

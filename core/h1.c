@@ -206,33 +206,9 @@ const void *h1_state(uint32_t *size)
 typedef char a22_state_fits_store[sizeof(H1State) <= 3840u ? 1 : -1];
 typedef char a22_slots_valid[NINST <= NSLOT && NFX <= NFXSLOT && NSLOT * NALGO < 255 ? 1 : -1];
 
-/* Version 4 (A22 0.1.0 to 0.4.0): twelve engine slots and eight effect slots, the rest as version 5. Only its
- * offsets and size are used: a version 4 state is read from its bytes into st, a table at a time. */
-typedef struct H1StateV4 {
-    uint32_t magic;
-    uint8_t version, inst, track;
-    int8_t octave;
-    uint8_t hud, keys[4], glo[4], seq[8], tape[4], fx_type, fx_on;
-    uint8_t fx_p[8][4];
-    uint8_t master[4], shake[4], riff_len, riff_root, riff[NRIFF], chord[4], chord_n, chord_mem[CHORD_MAX];
-    uint8_t ninst, rsv[3];
-    InstParams ip[12];
-    uint8_t knob[12][NALGO][4];
-    Track trk[NTRACK];
-    Snap snap[NSNAP];
-    uint8_t steps[NSTEP][NSNOTE], step_trk[NSTEP][NSNOTE], step_vel[NSTEP][NSNOTE];
-} H1StateV4;
 
 uint8_t h1_cur_snap(void) { return (uint8_t)(cur_snap & 7u); }
 void h1_set_cur_snap(uint8_t snap) { cur_snap = (uint8_t)(snap & 7u); }
-
-#define V4_SPAN(a, b) (offsetof(H1StateV4, b) - offsetof(H1StateV4, a))
-#define V5_SPAN(a, b) (offsetof(H1State, b) - offsetof(H1State, a))
-typedef char a22_v4_size[sizeof(H1StateV4) == 2648u /* JSM 8x2 bytes for snap: tempo+bars save*/ ? 1 : -1];   /* (what 0.1.0 to 0.4.0 save) */
-typedef char a22_v4_head[offsetof(H1StateV4, fx_p) == offsetof(H1State, fx_p) &&
-                         offsetof(H1StateV4, version) == offsetof(H1State, version) ? 1 : -1];
-typedef char a22_v4_mid[V4_SPAN(master, ip) == V5_SPAN(master, ip) ? 1 : -1];
-typedef char a22_v4_tail[sizeof(H1StateV4) - offsetof(H1StateV4, trk) == sizeof(H1State) - offsetof(H1State, trk) ? 1 : -1];
 
 static void bytes(void *to, const uint8_t *from, uint32_t n)
 {
@@ -256,18 +232,6 @@ SMALL int h1_state_load(const void *blob, uint32_t size)
         return -1;
     if (b[offsetof(H1State, version)] == H1_VERSION && size == sizeof st) {
         bytes(&st, b, (uint32_t)sizeof st);
-    } else if (b[offsetof(H1State, version)] == 4u && size == sizeof(H1StateV4)) {
-        uint8_t *p = (uint8_t *)&st;
-        for (n = 0; n < (uint32_t)sizeof st; n++)
-            p[n] = 0;
-        bytes(&st, b, (uint32_t)offsetof(H1State, fx_p));
-        bytes(st.fx_p, b + offsetof(H1StateV4, fx_p), (uint32_t)sizeof ((H1StateV4 *)0)->fx_p);
-        bytes(st.master, b + offsetof(H1StateV4, master), (uint32_t)V4_SPAN(master, ip));
-        bytes(st.ip, b + offsetof(H1StateV4, ip), (uint32_t)sizeof ((H1StateV4 *)0)->ip);
-        bytes(st.knob, b + offsetof(H1StateV4, knob), (uint32_t)sizeof ((H1StateV4 *)0)->knob);
-        bytes(st.trk, b + offsetof(H1StateV4, trk), (uint32_t)(sizeof(H1StateV4) - offsetof(H1StateV4, trk)));
-        st.nfx = 8;                                /* (version 4's byte here was spare, and 0) */
-        st.rsv[0] = st.rsv[1] = 0;
     } else {
         return -1;
     }
@@ -380,6 +344,8 @@ SMALL int h1_state_load(const void *blob, uint32_t size)
         if (tr->lfo[2] > 100) tr->lfo[2] = 0;
         if (tr->lfo[3] > 6) tr->lfo[3] = 0;
     }
+/*    for (s = 0; s < NSONG; s++) {
+
     for (i = 0; i < NSNAP; i++) {
         Snap *sn = &st.snap[i];
         sn->used &= 1u;
@@ -392,7 +358,7 @@ SMALL int h1_state_load(const void *blob, uint32_t size)
             if (sn->menv[j] > 100) sn->menv[j] = 50;
             if (sn->fx_p[j] > 100) sn->fx_p[j] = 50;
         }
-        if (sn->lfo[0] > 6) sn->lfo[0] = 0;          /* (as a track's: a bad save loaded out-of-range values) */
+        if (sn->lfo[0] > 6) sn->lfo[0] = 0;          // (as a track's: a bad save loaded out-of-range values) 
         if (sn->lfo[1] > 100) sn->lfo[1] = 50;
         if (sn->lfo[2] > 100) sn->lfo[2] = 0;
         if (sn->lfo[3] > 6) sn->lfo[3] = 0;
@@ -403,6 +369,7 @@ SMALL int h1_state_load(const void *blob, uint32_t size)
             if (st.step_trk[i][j] >= NTRACK) st.step_trk[i][j] = 0;
             if (st.step_vel[i][j] > 127) st.step_vel[i][j] = 127;
         }
+*/
     st.ninst = NINST;
     st.nfx = NFX;
     st.rsv[0] = st.rsv[1] = 0;

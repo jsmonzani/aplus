@@ -50,7 +50,7 @@ static const char *const O_VOICING[] = {"CLOSE", "OPEN", "DROP2", "+BASS"};
 static const int KCOL[4] = {GC_BLUE, GC_GREEN, GC_WHITE, GC_ORANGE};
 
 /* 8 white keys F3..F4 mapped to instant patch snapshots 1..8 */
-static const uint8_t SNAP_KEYS[NSNAP] = {0, 2, 4, 6, 7, 9, 11, 12};
+// static const uint8_t SNAP_KEYS[NSNAP] = {0, 2, 4, 6, 7, 9, 11, 12};
 
 /* ---- page definitions (base templates; subpages override cleanly in page_param) ------- */
 const PageDef pages[NPAGE] = {
@@ -539,7 +539,7 @@ void h1_key(int key, int down)
     if (key < 0 || key >= H1_NKEYS) return;
     if (down) clear_all_keep();
     /* SAVE + White Keys 1..8: Instant Patch Snapshots! */
-    if (down && (btn_held & (1u << H1_BTN_SAVE))) {
+    /*if (down && (btn_held & (1u << H1_BTN_SAVE))) {
         for (i = 0; i < NSNAP; i++) {
             if (key == SNAP_KEYS[i]) {
                 btn_fired[H1_BTN_SAVE] = 3;
@@ -557,7 +557,7 @@ void h1_key(int key, int down)
                 return;
             }
         }
-    }
+    }*/
     if (down) {
         int note = scale_snap(53 + key + 12 * st.octave);
         if (key_down[key]) return;
