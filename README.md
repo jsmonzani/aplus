@@ -4,7 +4,7 @@
 - One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier and gives more available events by saving 1 byte.
 - MIDI OUT: each track sends midi out on its channel
 - Multiple projects (song):  Everything is still recorded on the same tape, but events (LEv in synth.c) store the song of the note. Bitwise filtering notes by song (bits 3..5 of flags) tells if a note should be played - its song should be the same number as h1_cur_song() (see also macro LEV_IN_CUR_SONG to simply check if a note is playable)   
-- GLO: Load and save projects
+- GLO: Load and save projects. Seems to work on hardware as well
 - CAUTION: TRun = automation events are shared between projects
 
 
