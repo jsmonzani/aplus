@@ -3,7 +3,10 @@
 - Added KNOT and KOI instruments from h1.
 - One instrument per track in tape. algo and instrument are still recorded on the track but ignored at playback. Makes things easier and gives more available events by saving 1 byte.
 - MIDI OUT: each track sends midi out on its channel
-- Multiple projects (snaps = projects): use snaps (SAVE + white key) to load a snap, SAVE to save it. All projects share the same tape but events are filtered. The snap number is displayed on the top left. Limits: no recording of tempo and loop length. Everything is still recorded on the same tape, but events (LEv in synth.c) store the snap of the note. Bitwise filtering notes by snap (bits 3..5 of flags) tells if a note should be played - its snap should be the same number as h1_cur_snap() (see also macro LEV_OK to simply check if a note is playable)   
+- Multiple projects (song):  Everything is still recorded on the same tape, but events (LEv in synth.c) store the song of the note. Bitwise filtering notes by song (bits 3..5 of flags) tells if a note should be played - its song should be the same number as h1_cur_song() (see also macro LEV_IN_CUR_SONG to simply check if a note is playable)   
+- GLO: Load and save projects
+- CAUTION: TRun = automation events are shared between projects
+
 
 Knobs are more aligned with Feluca-based firmwares, i.e.:
 - PRESETS     Preset/Algo (1..8) or FX Type on FX page  

@@ -952,7 +952,7 @@ static void tape_play_fwd(f32 a, f32 b)
     int i;
     for (i = lev_find(a); i < nlev && (f32)lev[i].tick < b; i++)
         //if (!(lev[i].flags & 0x80u))
-        if (LEV_OK(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
+        if (LEV_IN_CUR_SONG(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
             tape_fire_ev(&lev[i], 0);
 }
 
@@ -961,7 +961,7 @@ static void tape_play_rev(f32 hi, f32 lo)
     int i;
     for (i = lev_find(hi) - 1; i >= 0 && (f32)lev[i].tick >= lo; i--)
         //if (!(lev[i].flags & 0x80u))
-        if (LEV_OK(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
+        if (LEV_IN_CUR_SONG(lev[i]) && !(lev[i].flags & 0x80u)) // JSM
             tape_fire_ev(&lev[i], 1);
 }
 
@@ -1225,7 +1225,7 @@ int eng_tape_note_info(int trk, int idx, uint16_t *tick, uint8_t *note, uint8_t 
     int i, count = 0, found = 0;
     trk &= 3;
     for (i = 0; i < nlev; i++) {
-        if ((lev[i].trk & 3) == trk && LEV_KIND(lev[i].flags) == LEV_ON && LEV_OK(lev[i])) {
+        if ((lev[i].trk & 3) == trk && LEV_KIND(lev[i].flags) == LEV_ON && LEV_IN_CUR_SONG(lev[i])) {
             if (count == idx) {
                 if (tick) *tick = lev[i].tick;
                 if (note) *note = (uint8_t)(lev[i].d1 & 127u);
@@ -1250,7 +1250,7 @@ void eng_tape_note_edit(int trk, int idx, int d_tick, int d_vel)
     for (i = 0; i < nlev; i++) {
         if ((lev[i].trk & 3) == trk && 
         LEV_KIND(lev[i].flags) == LEV_ON &&
-        LEV_OK(lev[i])) {
+        LEV_IN_CUR_SONG(lev[i])) {
             if (count == idx) {
                 on_pos = i;
                 on_tick = lev[i].tick;
@@ -2037,19 +2037,23 @@ static void handle(uint32_t e)
             tape_release_trk(t);                 /* (that track's notes, not every track's) */
             if (t == cur_trk) rec_forget();
             for (i = 0; i < nlev; i++)
-                // if ((lev[i].trk & 3) != t) lev[w++] = lev[i]; // JSM
-                if ( ((lev[i].trk & 3) != t) || !LEV_OK(lev[i]) ) lev[w++] = lev[i]; // JSM
+                if ( ((lev[i].trk & 3) != t) || !LEV_IN_CUR_SONG(lev[i]) ) lev[w++] = lev[i]; // JSM
             nlev = w;
             for (i = 0; i < 4; i++) trun[t].auto_on[i] = 0;
             if (!nlev) { loop_state = LOOP_EMPTY; loop_pos = 0.0f; }
             loop_gen++;
         } else {
-            int t, k;
-            tape_stop();
-            nlev = 0;
-            loop_state = LOOP_EMPTY;
+            int t, i, w = 0;
+            tape_stop(); // coupe les notes jouées par le séquenceur (tape_release_seq()), oublie les notes ouvertes en cours d'enregistrement (rec_forget()), sauvegarde le snapshot de la piste courante si on était en REC ou DUB, remet loop_state et replace loop_pos au début de la boucle (st.tape[1] * seq_bar_ticks()).
+                for (i = 0; i < nlev; i++)
+                    if (!LEV_IN_CUR_SONG(lev[i])) lev[w++] = lev[i]; // Keep events not in the song
+            nlev = w;
+            if (!nlev) { loop_state = LOOP_EMPTY; loop_pos = 0.0f; }
+            /*
+            nlev = 0; // vide complètement le tableau des événements enregistrés (lev[]) pour les 4 pistes à la fois (notes, vélocités et automations).
+            loop_state = LOOP_EMPTY; // indique qu'il n'y a plus aucun événement sur la tape (état vide).*/
             for (t = 0; t < NTRACK; t++)
-                for (k = 0; k < 4; k++) trun[t].auto_on[k] = 0;
+                for (i = 0; i < 4; i++) trun[t].auto_on[i] = 0; // désactive l'automation de K1..K4 sur toutes les pistes
             loop_gen++;
         }
         break;
@@ -2686,7 +2690,7 @@ void eng_seq_info(SeqInfo *si)
                 for (c = 0; c < 32; c++)
                     seq_dens.dens[t][c] = 0;
             for (i = 0; i < ne && i < NLEV; i++) {
-                if ((LEV_OK(lev[i])) && (lev[i].flags & 7) == LEV_ON) { // JSM only count notes on the current snap
+                if ((LEV_IN_CUR_SONG(lev[i])) && (lev[i].flags & 7) == LEV_ON) { // JSM only count notes on the current snap
                     int col = iclamp((int)((f32)lev[i].tick * 32.0f / loop_len), 0, 31);
                     uint8_t *d = &seq_dens.dens[lev[i].trk & 3][col];
                     if (*d < 15) (*d)++;

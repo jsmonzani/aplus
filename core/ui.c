@@ -741,7 +741,7 @@ SMALL void h1_button(int btn, int down)
             else
                 eng_post(EV_REC, 0);
         }
-        if (btn == H1_BTN_GLO)  open_page(PG_GLO);
+        if (btn == H1_BTN_GLO)  {open_page(PG_GLO); subpage[PG_GLO] = 3; } // JSM Page 3 (SONG) by default
         if (btn == H1_BTN_SEQ)  open_page(PG_SEQ);
         if (btn == H1_BTN_HOME) {
             if (page == PG_HOME) name_t = 0.0f;
@@ -931,7 +931,7 @@ static void holds(void)
     }
     if ((btn_held & (1u << H1_BTN_REC)) && btn_fired[H1_BTN_REC] == 2 && now - btn_ms[H1_BTN_REC] > 2800u) {
         btn_fired[H1_BTN_REC] = 1;               /* (the whole tape only once asked: a long hold is easy by accident) */
-        toast("CLEAR ALL? TAP REC", 0, 0, 0, -1);
+        toast("REC=DEL SONG", 0, 0, 0, -1);
         clear_all_asked = 1;
     }
     if (clear_all_asked == 2 && now - clear_all_ms >= CLEAR_ALL_WAIT)

@@ -121,7 +121,7 @@ typedef struct Song { // Bytes 11 + 4 * 21 ) = 95 * 8 songs = 760
 // JSM
 #define LEV_KIND(f)       ((uint8_t)((f) & 7u))
 #define LEV_SNAP(f)       ((uint8_t)(((f) >> 3) & 7u))
-#define LEV_OK(f) (LEV_SNAP(f.flags) == h1_cur_song()) /*are we on the current snap?*/
+#define LEV_IN_CUR_SONG(f) (LEV_SNAP(f.flags) == h1_cur_song()) /*are we on the current snap?*/
 #define LEV_SET_SNAP(f, s) \
     ((uint8_t)(((f) & (uint8_t)~(7u << 3)) | (((uint8_t)(s) & 7u) << 3)))
 #define LEV_MAKE_FLAGS(k, s, fresh) \
